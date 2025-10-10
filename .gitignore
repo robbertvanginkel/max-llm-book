@@ -1,1 +1,3 @@
-book
+# pixi environments
+.pixi/*
+!.pixi/config.toml
