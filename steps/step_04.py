@@ -1,6 +1,12 @@
-from max.experimental import functional as F
-from max.experimental.tensor import Tensor
-from max.nn.module_v3 import Linear, Module
+# 1: Import the required modules from MAX
+# TODO: Import functional module from max.experimental with the alias F
+# https://docs.modular.com/max/api/python/experimental/functional
+
+# TODO: Import Tensor from max.experimental.tensor
+# https://docs.modular.com/max/api/python/experimental/tensor.Tensor
+
+# TODO: Import Linear and Module from max.nn.module_v3
+# https://docs.modular.com/max/api/python/nn/module_v3
 
 from solutions.solution_01 import GPT2Config
 
@@ -15,8 +21,18 @@ class GPT2MLP(Module):
     def __init__(self, intermediate_size: int, config: GPT2Config):
         super().__init__()
         embed_dim = config.n_embd
-        self.c_fc = Linear(embed_dim, intermediate_size, bias=True)
-        self.c_proj = Linear(intermediate_size, embed_dim, bias=True)
+
+        # 2: Create the first linear layer (embedding to intermediate)
+        # TODO: Create self.c_fc as a Linear layer from embed_dim to intermediate_size with bias=True
+        # https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Linear
+        # Hint: This is the expansion layer in the MLP
+        self.c_fc = None
+
+        # 3: Create the second linear layer (intermediate back to embedding)
+        # TODO: Create self.c_proj as a Linear layer from intermediate_size to embed_dim with bias=True
+        # https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Linear
+        # Hint: This is the projection layer that brings us back to the embedding dimension
+        self.c_proj = None
 
     def __call__(self, hidden_states: Tensor) -> Tensor:
         """Apply feed-forward network.
@@ -27,7 +43,18 @@ class GPT2MLP(Module):
         Returns:
             MLP output.
         """
-        hidden_states = self.c_fc(hidden_states)
-        hidden_states = F.gelu(hidden_states, approximate="tanh")
-        hidden_states = self.c_proj(hidden_states)
-        return hidden_states
+        # 4: Apply the first linear transformation
+        # TODO: Apply self.c_fc to hidden_states
+        # Hint: This expands the hidden dimension to the intermediate size
+        hidden_states = None
+
+        # 5: Apply GELU activation function
+        # TODO: Use F.gelu() with hidden_states and approximate="tanh"
+        # https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.gelu
+        # Hint: GELU is the non-linear activation used in GPT-2's MLP
+        hidden_states = None
+
+        # 6: Apply the second linear transformation and return
+        # TODO: Apply self.c_proj to hidden_states and return the result
+        # Hint: This projects back to the embedding dimension
+        return None
