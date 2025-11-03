@@ -1,6 +1,6 @@
 # Introduction
 
-Transformer models power today's most impactful AI applications—from language
+Transformer models power today's most impactful AI applications, from language
 models like ChatGPT to code generation tools like GitHub Copilot. Maybe you've
 been asked to adapt one of these models for your team, or you want to understand
 what's actually happening when you call an inference API. Either way, building a
@@ -8,8 +8,8 @@ transformer from scratch is one of the best ways to truly understand how they
 work.
 
 This guide walks you through implementing GPT-2 using Modular's MAX framework.
-You'll build each component yourself—embeddings, attention mechanisms,
-feed-forward layers—and see how they fit together into a complete language
+You'll build each component yourself: embeddings, attention mechanisms, and
+feed-forward layers. You'll see how they fit together into a complete language
 model. By the end, you'll be able to adapt models to your specific needs, debug
 performance issues by understanding what's happening under the hood, and make
 informed architecture decisions when designing ML systems.
@@ -28,12 +28,12 @@ handoff introduces complexity.
 
 MAX Framework takes a different approach: everything happens in one unified
 system. You write Python code to define your model, load weights, and run
-inference—all in MAX's Python API. The Engine handles optimization
+inference, all in MAX's Python API. The Engine handles optimization
 automatically, while MAX Serve manages deployment. No context switching, no
 incompatible toolchains.
 
 When you build GPT-2 in this guide, you'll load pretrained weights from
-HuggingFace, implement the architecture, and run text generation—all in the same
+HuggingFace, implement the architecture, and run text generation, all in the same
 environment. The skills transfer directly to building custom architectures. Once
 you understand how GPT-2's components fit together, you can mix and match these
 patterns for whatever model you need.
@@ -85,7 +85,7 @@ Each step includes:
 - Connections to broader model development patterns
 
 By the end, you'll have a complete GPT-2 implementation and practical experience
-with MAX's Python API—skills you can immediately apply to your own projects.
+with MAX's Python API. These are skills you can immediately apply to your own projects.
 
 ## How This Works
 
