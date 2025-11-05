@@ -1,81 +1,60 @@
 """
-Step 11: Transformer Block
+Step 13: Language Model Head
 
-Combine multi-head attention, MLP, layer normalization, and residual
-connections into a complete transformer block.
+Add the final projection layer that converts hidden states to vocabulary logits.
 
 Tasks:
-1. Import Module and all previous solution components
-2. Create ln_1, attn, ln_2, and mlp layers
-3. Implement forward pass with pre-norm residual pattern
+1. Import Linear, Module, and previous components
+2. Create transformer and lm_head layers
+3. Implement forward pass: transformer -> lm_head
 
-Run: pixi run s11
+Run: pixi run s13
 """
 
 # TODO: Import required modules
-# Hint: You'll need Module from max.nn.module_v3
+# Hint: You'll need Linear and Module from max.nn.module_v3
 # Hint: Import GPT2Config from solutions.solution_01
-# Hint: Import GPT2MLP from solutions.solution_04
-# Hint: Import GPT2MultiHeadAttention from solutions.solution_09
-# Hint: Import LayerNorm from solutions.solution_10
+# Hint: Import GPT2Model from solutions.solution_12
 
 
-class GPT2Block(Module):
-    """Complete GPT-2 transformer block."""
+class MaxGPT2LMHeadModel(Module):
+    """Complete GPT-2 model with language modeling head."""
 
     def __init__(self, config: GPT2Config):
-        """Initialize transformer block.
+        """Initialize GPT-2 with LM head.
 
         Args:
             config: GPT2Config containing model hyperparameters
         """
         super().__init__()
 
-        hidden_size = config.n_embd
-        inner_dim = (
-            config.n_inner
-            if hasattr(config, "n_inner") and config.n_inner is not None
-            else 4 * hidden_size
-        )
+        self.config = config
 
-        # TODO: Create first layer norm (before attention)
-        # Hint: Use LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
-        self.ln_1 = None  # Line 40-41
+        # TODO: Create the transformer
+        # Hint: Use GPT2Model(config)
+        self.transformer = None  # Line 32-33
 
-        # TODO: Create multi-head attention
-        # Hint: Use GPT2MultiHeadAttention(config)
-        self.attn = None  # Line 44-45
+        # TODO: Create language modeling head
+        # Hint: Use Linear(config.n_embd, config.vocab_size, bias=False)
+        # Projects from hidden dimension to vocabulary size
+        self.lm_head = None  # Line 36-38
 
-        # TODO: Create second layer norm (before MLP)
-        # Hint: Use LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
-        self.ln_2 = None  # Line 48-49
-
-        # TODO: Create MLP
-        # Hint: Use GPT2MLP(inner_dim, config)
-        self.mlp = None  # Line 52-53
-
-    def __call__(self, hidden_states):
-        """Apply transformer block.
+    def __call__(self, input_ids):
+        """Forward pass through transformer and LM head.
 
         Args:
-            hidden_states: Input tensor, shape [batch, seq_length, n_embd]
+            input_ids: Token IDs, shape [batch, seq_length]
 
         Returns:
-            Output tensor, shape [batch, seq_length, n_embd]
+            Logits over vocabulary, shape [batch, seq_length, vocab_size]
         """
-        # TODO: Attention block with residual connection
-        # Hint: residual = hidden_states
-        # Hint: hidden_states = self.ln_1(hidden_states)
-        # Hint: attn_output = self.attn(hidden_states)
-        # Hint: hidden_states = attn_output + residual
-        pass  # Line 67-71
+        # TODO: Get hidden states from transformer
+        # Hint: hidden_states = self.transformer(input_ids)
+        pass  # Line 51-52
 
-        # TODO: MLP block with residual connection
-        # Hint: residual = hidden_states
-        # Hint: hidden_states = self.ln_2(hidden_states)
-        # Hint: feed_forward_hidden_states = self.mlp(hidden_states)
-        # Hint: hidden_states = residual + feed_forward_hidden_states
-        pass  # Line 74-78
+        # TODO: Project to vocabulary logits
+        # Hint: logits = self.lm_head(hidden_states)
+        pass  # Line 55-56
 
-        # TODO: Return the output
-        return None  # Line 81
+        # TODO: Return logits
+        return None  # Line 59

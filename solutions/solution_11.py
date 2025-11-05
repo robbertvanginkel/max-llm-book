@@ -1,70 +1,49 @@
 """
-Solution for Step 11: Transformer Block
+Solution for Step 13: Language Model Head
 
-This module implements a complete GPT-2 transformer block, combining
-multi-head attention, MLP, layer normalization, and residual connections.
+This module adds the final projection layer that converts hidden states
+to vocabulary logits for predicting the next token.
 """
 
-from max.nn.module_v3 import Module
+from max.nn.module_v3 import Linear, Module
 
 from solutions.solution_01 import GPT2Config
-from solutions.solution_04 import GPT2MLP
-from solutions.solution_09 import GPT2MultiHeadAttention
-from solutions.solution_10 import LayerNorm
+from solutions.solution_12 import GPT2Model
 
 
-class GPT2Block(Module):
-    """Complete GPT-2 transformer block matching HuggingFace structure.
+class MaxGPT2LMHeadModel(Module):
+    """Complete GPT-2 model with language modeling head.
 
-    Architecture (pre-norm):
-    1. x = x + attention(layer_norm(x))
-    2. x = x + mlp(layer_norm(x))
+    This is the full model that can be used for text generation.
     """
 
     def __init__(self, config: GPT2Config):
-        """Initialize transformer block.
+        """Initialize GPT-2 with LM head.
 
         Args:
             config: GPT2Config containing model hyperparameters
         """
         super().__init__()
 
-        hidden_size = config.n_embd
-        # Inner dimension for MLP (4x hidden size by default)
-        inner_dim = (
-            config.n_inner
-            if hasattr(config, "n_inner") and config.n_inner is not None
-            else 4 * hidden_size
-        )
+        self.config = config
+        # The transformer (embeddings + blocks + final norm)
+        self.transformer = GPT2Model(config)
+        # Language modeling head (hidden states -> vocabulary logits)
+        self.lm_head = Linear(config.n_embd, config.vocab_size, bias=False)
 
-        # First layer norm (before attention)
-        self.ln_1 = LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
-        # Multi-head attention
-        self.attn = GPT2MultiHeadAttention(config)
-        # Second layer norm (before MLP)
-        self.ln_2 = LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
-        # Feed-forward MLP
-        self.mlp = GPT2MLP(inner_dim, config)
-
-    def __call__(self, hidden_states):
-        """Apply transformer block.
+    def __call__(self, input_ids):
+        """Forward pass through transformer and LM head.
 
         Args:
-            hidden_states: Input tensor, shape [batch, seq_length, n_embd]
+            input_ids: Token IDs, shape [batch, seq_length]
 
         Returns:
-            Output tensor, shape [batch, seq_length, n_embd]
+            Logits over vocabulary, shape [batch, seq_length, vocab_size]
         """
-        # Attention block with residual connection
-        residual = hidden_states
-        hidden_states = self.ln_1(hidden_states)
-        attn_output = self.attn(hidden_states)
-        hidden_states = attn_output + residual
+        # Get hidden states from transformer
+        hidden_states = self.transformer(input_ids)
 
-        # MLP block with residual connection
-        residual = hidden_states
-        hidden_states = self.ln_2(hidden_states)
-        feed_forward_hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + feed_forward_hidden_states
+        # Project to vocabulary logits
+        logits = self.lm_head(hidden_states)
 
-        return hidden_states
+        return logits

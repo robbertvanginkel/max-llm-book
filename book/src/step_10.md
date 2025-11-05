@@ -1,106 +1,83 @@
-# Step 10: Residual connections and layer normalization
+# Step 10: Stacking transformer blocks
 
 <div class="note">
-    Learn to implement residual connections and layer normalization to enable training deep transformer networks.
+    Learn to stack 12 transformer blocks with embeddings and final normalization to create the complete GPT-2 model.
 </div>
 
-## What are residual connections and layer normalization?
+## Building the complete model
 
-In this section you will combine residual connections and layer normalization into a reusable pattern for transformer blocks.
+In this step, you'll create the `GPT2Model` class - the complete transformer that takes token IDs as input and outputs contextualized representations. This class combines embeddings, 12 stacked transformer blocks, and final layer normalization.
 
-**Residual connections** add the input directly to the output: `output = input + layer(input)`. This creates shortcuts that help gradients flow through deep networks during training.
+The model processes input in four stages: convert token IDs to embeddings, add position information, pass through 12 transformer blocks sequentially, and normalize the final output. Each transformer block refines the representation, building up from surface patterns in early layers to semantic understanding in later layers.
 
-**Layer normalization** normalizes activations across features for each position independently, then applies learned scale and shift parameters. This stabilizes training.
+GPT-2 uses 12 layers because this depth allows the model to learn complex patterns while remaining trainable. Fewer layers would limit the model's capacity. More layers would increase training difficulty without proportional gains in quality for a 117M parameter model.
 
-GPT-2 uses **pre-norm architecture**: layer norm is applied before each sublayer (attention or MLP), following the pattern `x = x + sublayer(layer_norm(x))`.
+## Understanding the components
 
-## Why use residual connections?
+The complete model has four main components:
 
-**1. Gradient Flow**: Deep networks suffer from vanishing gradients—gradients shrink exponentially as they backpropagate through many layers. Residual connections create direct paths for gradients to flow backward through the network. During backpropagation, the gradient of `output = input + layer(input)` includes a term from the identity path (`∂output/∂input` includes a +1), ensuring gradients can flow unimpeded even through very deep networks.
+**Token embeddings (`wte`)**: Maps each token ID to a 768-dimensional vector using a lookup table with 50,257 entries (one per vocabulary token).
 
-**2. Identity Initialization**: At initialization, a network with residual connections can learn the identity function easily. If a layer's weights are near zero, `layer(input) ≈ 0`, so `output ≈ input`. The network starts in a reasonable state where information passes through, and layers can gradually learn useful transformations. Without residual connections, random initialization often produces outputs unrelated to inputs, making early training unstable.
+**Position embeddings (`wpe`)**: Maps each position (0 to 1,023) to a 768-dimensional vector. These are added to token embeddings so the model knows token order.
 
-**3. Ensemble Effect**: Residual networks can be viewed as implicit ensembles. Each residual connection creates multiple paths through the network—some paths skip layers, others pass through them. The final output combines information from all these paths. This ensemble-like behavior improves robustness and generalization.
+**Transformer blocks (`h`)**: 12 identical blocks stacked using MAX's [`Sequential`](https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Sequential) module. Sequential applies blocks in order, passing each block's output to the next.
 
-**4. Information Preservation**: In transformers processing sequences, residual connections ensure that positional and token information from embeddings is preserved throughout all layers. Without residuals, this information might be lost as it passes through multiple transformations. Residuals guarantee that the original embeddings can always influence the final output.
+**Final layer norm (`ln_f`)**: Normalizes the output after all blocks. This stabilizes the representation before the language model head (added in Step 11) projects to vocabulary logits.
 
-## Why use layer normalization?
+## Understanding the forward pass
 
-**1. Training Stability**: Without normalization, activation distributions shift during training (internal covariate shift), forcing later layers to constantly adapt to changing inputs. Layer norm stabilizes these distributions, allowing consistent learning across all layers. This is especially important for transformers, which can have dozens of layers.
+The forward method processes token IDs through the model:
 
-**2. Scale Invariance**: Layer norm makes the network less sensitive to the scale of parameters. Large weight values don't cause exploding activations because normalization rescales them. This allows using higher learning rates and more aggressive optimization, speeding up training.
+First, create position indices using [`Tensor.arange`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.arange). Generate positions [0, 1, 2, ..., seq_length-1] matching the input's dtype and device. This ensures compatibility when adding to embeddings.
 
-**3. Batch Independence**: Unlike batch normalization (which normalizes across the batch dimension), layer norm normalizes each example independently. This means behavior is identical during training and inference, and the model works with any batch size, including batch size 1. This is crucial for autoregressive generation where you process one token at a time.
+Next, look up embeddings. Get token embeddings with `self.wte(input_ids)` and position embeddings with `self.wpe(position_indices)`. Add them together element-wise, as both are shape `[batch, seq_length, 768]`.
 
-**4. Learned Adaptation**: The gamma (scale) and beta (shift) parameters allow the network to learn the optimal distribution for each layer. If complete normalization isn't beneficial, the network can learn gamma and beta values that partially or fully undo it. This flexibility is important—normalization is helpful, but the network needs control over the final distribution.
+Then, pass through the transformer blocks with `self.h(x)`. Sequential applies all 12 blocks in order, each refining the representation.
 
-### Key concepts
+Finally, normalize the output with `self.ln_f(x)` and return the result. The output shape matches the input: `[batch, seq_length, 768]`.
 
-**Layer Normalization Formula**:
+<div class="note">
+<div class="title">MAX operations</div>
 
-$$\text{output} = \gamma \cdot \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} + \beta$$
+You'll use the following MAX operations to complete this task:
 
-where:
-- $\mu = \text{mean}(x)$ is the mean across the last dimension
-- $\sigma^2 = \text{variance}(x)$ is the variance across the last dimension
-- $\gamma$ is the learnable scale parameter (weight)
-- $\beta$ is the learnable shift parameter (bias)
-- $\epsilon$ prevents division by zero (typically 1e-5)
+**Module composition**:
+- [`Sequential(*modules)`](https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Sequential): Chains transformer blocks in sequence
 
-**MAX Layer Norm Implementation**:
-- [`F.layer_norm(x, gamma, beta, epsilon)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.layer_norm)
-- `gamma`: learnable scale parameter (initialized to 1)
-- `beta`: learnable shift parameter (initialized to 0)
-- Normalizes over the last dimension automatically
+**Embeddings**:
+- [`Embedding(num_embeddings, dim)`](https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Embedding): Token and position embeddings
 
-**Learnable Parameters**:
-- `weight` (gamma): `Tensor.ones([dim])` - initialized to 1
-- `bias` (beta): `Tensor.zeros([dim])` - initialized to 0
-- These allow the network to learn optimal scaling and shifting
+**Position generation**:
+- [`Tensor.arange(seq_length, dtype, device)`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.arange): Creates position indices
 
-**Pre-norm Architecture**:
-- GPT-2 uses the pre-norm pattern for residual connections:
+</div>
 
-$$\text{output} = x + \text{Sublayer}(\text{LayerNorm}(x))$$
+## Implementing the model
 
-- Apply layer norm first, then sublayer, then add residual
-- More stable than post-norm: $\text{output} = \text{LayerNorm}(x + \text{Sublayer}(x))$
+You'll create the `GPT2Model` class by composing embedding layers, transformer blocks, and layer normalization. The class builds on all the components from previous steps.
 
-**Residual Addition**:
-- Simple element-wise addition: `input + sublayer_output`
-- Both tensors must have identical shapes
-- No additional parameters needed—just addition
+First, import the required modules. You'll need `Tensor` for position indices, `Embedding`, `Module`, and `Sequential` from MAX's neural network module, plus the previously implemented `GPT2Config`, `LayerNorm`, and `GPT2Block`.
 
-### Implementation tasks (`step_10.py`)
+In the `__init__` method, create the four components:
+- Token embeddings: `Embedding(config.vocab_size, dim=config.n_embd)` stored as `self.wte`
+- Position embeddings: `Embedding(config.n_positions, dim=config.n_embd)` stored as `self.wpe`
+- Transformer blocks: `Sequential(*(GPT2Block(config) for _ in range(config.n_layer)))` stored as `self.h`
+- Final layer norm: `LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)` stored as `self.ln_f`
 
-1. **Import Required Modules** (Lines 13-17):
-   - Import `functional as F` from `max.experimental`
-   - Import `Tensor` from `max.experimental.tensor`
-   - Import `DimLike` from `max.graph`
-   - Import `Module` from `max.nn.module_v3`
+The `Sequential` module takes a generator expression that creates 12 identical `GPT2Block` instances. The `*` unpacks them as arguments to `Sequential`.
 
-2. **Initialize LayerNorm Parameters** (Lines 33-38):
-   - Create `self.weight`: `Tensor.ones([dim])`
-   - Create `self.bias`: `Tensor.zeros([dim])`
-   - Store `self.eps` for numerical stability
+In the `forward` method, implement the four-stage processing:
 
-3. **Implement LayerNorm Forward Pass** (Lines 50-51):
-   - Call `F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)`
-   - Returns normalized tensor with same shape as input
+1. Get the sequence length from `input_ids.shape`
+2. Create position indices: `Tensor.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device)`
+3. Look up embeddings and add them: `x = self.wte(input_ids) + self.wpe(position_indices)`
+4. Apply transformer blocks: `x = self.h(x)`
+5. Apply final normalization: `x = self.ln_f(x)`
+6. Return `x`
 
-4. **Create ResidualBlock LayerNorm** (Lines 68-69):
-   - Initialize `self.ln = LayerNorm(dim, eps=eps)`
-   - This will be used to normalize before sublayers
+The position indices must match the input's dtype and device to ensure the tensors are compatible for addition.
 
-5. **Implement Residual Connection** (Lines 83-84):
-   - Return `x + sublayer_output`
-   - Simple addition creates the residual connection
-
-6. **Implement apply_residual_connection** (Lines 97-98):
-   - Return `input_tensor + sublayer_output`
-   - Standalone function demonstrating the pattern
-
-**Implementation**:
+**Implementation** (`step_10.py`):
 
 ```python
 {{#include ../../steps/step_10.py}}
@@ -108,10 +85,15 @@ $$\text{output} = x + \text{Sublayer}(\text{LayerNorm}(x))$$
 
 ### Validation
 
-Run `pixi run s10`
+Run `pixi run s10` to verify your implementation.
 
-**Reference**: `solutions/solution_10.py`
+<details>
+<summary>Show solution</summary>
 
----
+```python
+{{#include ../../solutions/solution_10.py}}
+```
 
-**Next**: In [Step 11](./step_11.md), you'll combine everything learned so far—multi-head attention, MLP, layer norm, and residual connections—into a complete transformer block, the fundamental building block of GPT-2.
+</details>
+
+**Next**: In [Step 11](./step_11.md), you'll add the language modeling head that projects hidden states to vocabulary logits for text generation.

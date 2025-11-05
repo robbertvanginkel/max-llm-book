@@ -1,80 +1,51 @@
 # Step 06: Position embeddings
 
 <div class="note">
-    Learn to create position embeddings that encode sequence order information for the model.
+    Learn to create position embeddings that encode the order of tokens in a sequence.
 </div>
 
-## What are position embeddings?
+## Implementing position embeddings
 
-In this section you will create position embeddings to encode where each token appears in the sequence. While token embeddings tell the model "what" each token is, position embeddings tell it "where" the token is located.
+In this step you'll create position embeddings to encode where each token appears in the sequence. While token embeddings tell the model "what" each token is, position embeddings tell it "where" the token is located. These position vectors are added to token embeddings before entering the transformer blocks.
+
+Transformers process all positions in parallel through attention, unlike Recurrent Neural Networks (RNNs) that process sequentially. This parallelism enables faster training but loses positional information. Position embeddings restore this information so the model can distinguish "dog bites man" from "man bites dog".
+
+## Understanding position embeddings
 
 Position embeddings work like token embeddings: a lookup table with shape [1024, 768] where 1024 is the maximum sequence length. Position 0 gets the first row, position 1 gets the second row, and so on.
 
-These position vectors are added to token embeddings before entering the transformer blocks. Without position information, "dog bites man" and "man bites dog" would look identical to the model.
+GPT-2 uses learned position embeddings, meaning these vectors are initialized randomly and trained alongside the model. This differs from the original Transformer which used fixed sinusoidal position encodings. Learned embeddings let the model discover optimal position representations for its specific task, though they cannot generalize beyond the maximum length seen during training (1024 tokens).
 
-## Why use position embeddings?
+**Key parameters**:
+- Maximum sequence length: 1,024 positions
+- Embedding dimension: 768 for GPT-2 base
+- Shape: [n_positions, n_embd]
+- Layer name: `wpe` (word position embeddings)
 
-**1. Sequence Order Matters**: Language is inherently sequential—word order determines meaning. The sentence "not good" has opposite meaning from "good." Since transformers process all positions in parallel through attention, they need explicit position information to distinguish token order. Position embeddings provide this crucial ordering signal.
+<div class="note">
+<div class="title">MAX operations</div>
 
-**2. Parallel Processing Requirement**: Unlike RNNs that process sequences sequentially (inherently encoding position through time steps), transformers attend to all positions simultaneously. This parallelism enables much faster training but loses positional information. Position embeddings restore this information without sacrificing the parallel processing advantage.
+You'll use the following MAX operations to complete this task:
 
-**3. Long-Range Dependencies**: Position embeddings help the model learn position-dependent patterns. For instance, the model can learn that question marks typically appear at specific positions relative to question words, or that certain phrase structures appear at particular sentence positions. This position awareness improves the model's ability to capture syntactic and structural patterns.
+**Position indices**:
+- [`Tensor.arange(seq_length, dtype, device)`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.arange): Creates sequence positions [0, 1, 2, ..., seq_length-1]
 
-**4. Complementary to Attention**: While attention mechanisms learn "what to attend to" based on content similarity, position embeddings help the model learn "where to attend" based on position relationships. Queries like "attend to the previous token" or "attend to tokens 5 positions away" become learnable patterns through the combination of content embeddings and position embeddings.
+**Embedding layer**:
+- [`Embedding(num_embeddings, dim)`](https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Embedding): Same class as token embeddings, but for positions
 
-### Key concepts
+</div>
 
-**Position Indices**:
-- Sequence positions: 0, 1, 2, ..., seq_length-1
-- Created with [`Tensor.arange(seq_length, dtype, device)`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.arange)
-- Must match the device and dtype of input tokens
-- Independent of batch size (same positions used for all examples)
+## Implementing the class
 
-**MAX Embedding for Positions**:
-- Same `Embedding` class as token embeddings
-- [`Embedding(num_embeddings, dim)`](https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Embedding)
-- For positions: `num_embeddings = n_positions` (1024 for GPT-2)
-- Embedding dimension matches token embeddings (768)
+You'll implement the position embeddings in several steps:
 
-**Maximum Sequence Length**:
-- GPT-2 supports up to 1024 tokens per sequence
-- Position embeddings trained only up to this length
-- Cannot process sequences longer than `n_positions` without modifications
-- Referred to as `n_positions` in the config
+1. **Import required modules**: Import `Tensor`, `Embedding`, and `Module` from MAX libraries.
 
-**HuggingFace Naming Convention**:
-- `wpe` stands for "word position embeddings"
-- Matches original GPT-2 implementation
-- Parallel to `wte` (word token embeddings)
-- Essential for loading pretrained weights
+2. **Create position embedding layer**: Use `Embedding(config.n_positions, dim=config.n_embd)` and store in `self.wpe`.
 
-**Adding Embeddings**:
-- Token embeddings + position embeddings (element-wise addition)
-- Both have shape [batch, seq_length, n_embd]
-- Combined before entering transformer blocks
-- Will see this combination in later steps
+3. **Implement forward pass**: Call `self.wpe(position_ids)` to lookup position embeddings. Input shape: [seq_length] or [batch, seq_length]. Output shape: [seq_length, n_embd] or [batch, seq_length, n_embd].
 
-### Implementation tasks (`step_06.py`)
-
-1. **Import Required Modules** (Lines 13-15):
-   - Import `Tensor` from `max.experimental.tensor` (for Tensor.arange)
-   - Import `Embedding` from `max.nn.module_v3`
-   - Import `Module` from `max.nn.module_v3`
-   - Config is already imported for you
-
-2. **Create Position Embedding Layer** (Lines 27-29):
-   - Use `Embedding(config.n_positions, dim=config.n_embd)`
-   - `config.n_positions` is 1024 (maximum sequence length)
-   - `dim=config.n_embd` is 768 (embedding dimension)
-   - Store in `self.wpe` (word position embeddings)
-
-3. **Implement Forward Pass** (Lines 42-44):
-   - Call `self.wpe(position_ids)` to lookup position embeddings
-   - Input: position indices of shape [seq_length] or [batch, seq_length]
-   - Output: position embeddings of shape [seq_length, n_embd] or [batch, seq_length, n_embd]
-   - Return the result directly
-
-**Implementation**:
+**Implementation** (`step_06.py`):
 
 ```python
 {{#include ../../steps/step_06.py}}
@@ -82,10 +53,15 @@ These position vectors are added to token embeddings before entering the transfo
 
 ### Validation
 
-Run `pixi run s06`
+Run `pixi run s06` to verify your implementation.
 
-**Reference**: `solutions/solution_06.py`
+<details>
+<summary>Show solution</summary>
 
----
+```python
+{{#include ../../solutions/solution_06.py}}
+```
 
-**Next**: In [Step 07](./step_07.md), you'll begin implementing the attention mechanism, starting with Query/Key/Value projections that use both the token and position embeddings you've created.
+</details>
+
+**Next**: In [Step 07](./step_07.md), you'll implement multi-head attention.

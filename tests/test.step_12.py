@@ -1,14 +1,14 @@
-"""Tests for Step 12: Stacking Transformer Blocks"""
+"""Tests for Step 14: Text Generation"""
 
 import ast
 from pathlib import Path
 
 
-def test_step_12():
-    """Comprehensive validation for Step 12 implementation."""
+def test_step_14():
+    """Comprehensive validation for Step 14 implementation."""
 
     results = []
-    step_file = Path("steps/step_12.py")
+    step_file = Path("steps/step_14.py")
 
     # Read source
     if not step_file.exists():
@@ -16,213 +16,113 @@ def test_step_12():
         return
 
     source = step_file.read_text()
-    tree = ast.parse(source)
 
     # Phase 1: Import checks
-    has_tensor = False
-    has_embedding = False
-    has_module = False
-    has_sequential = False
-    has_config = False
-    has_layernorm = False
-    has_block = False
+    has_numpy = "import numpy" in source
+    has_cpu = "from max.driver import" in source and "CPU" in source
+    has_dtype = "from max.dtype import" in source and "DType" in source
+    has_functional = "from max.experimental import" in source and "functional" in source
+    has_tensor = "from max.experimental.tensor import" in source and "Tensor" in source
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            if node.module == "max.experimental.tensor":
-                for alias in node.names:
-                    if alias.name == "Tensor":
-                        has_tensor = True
-            if node.module == "max.nn.module_v3":
-                for alias in node.names:
-                    if alias.name == "Embedding":
-                        has_embedding = True
-                    if alias.name == "Module":
-                        has_module = True
-                    if alias.name == "Sequential":
-                        has_sequential = True
-            if node.module == "solutions.solution_01":
-                for alias in node.names:
-                    if alias.name == "GPT2Config":
-                        has_config = True
-            if node.module == "solutions.solution_10":
-                for alias in node.names:
-                    if alias.name == "LayerNorm":
-                        has_layernorm = True
-            if node.module == "solutions.solution_11":
-                for alias in node.names:
-                    if alias.name == "GPT2Block":
-                        has_block = True
+    if has_numpy:
+        results.append("✅ numpy is correctly imported")
+    else:
+        results.append("❌ numpy is not imported")
+        results.append("   Hint: Add 'import numpy as np'")
+
+    if has_cpu:
+        results.append("✅ CPU is correctly imported")
+    else:
+        results.append("❌ CPU is not imported")
+        results.append("   Hint: Add 'from max.driver import CPU'")
+
+    if has_dtype:
+        results.append("✅ DType is correctly imported")
+    else:
+        results.append("❌ DType is not imported")
+        results.append("   Hint: Add 'from max.dtype import DType'")
+
+    if has_functional:
+        results.append("✅ functional is correctly imported")
+    else:
+        results.append("❌ functional is not imported")
+        results.append("   Hint: Add 'from max.experimental import functional as F'")
 
     if has_tensor:
-        results.append("✅ Tensor is correctly imported from max.experimental.tensor")
+        results.append("✅ Tensor is correctly imported")
     else:
-        results.append("❌ Tensor is not imported from max.experimental.tensor")
+        results.append("❌ Tensor is not imported")
         results.append("   Hint: Add 'from max.experimental.tensor import Tensor'")
-
-    if has_embedding:
-        results.append("✅ Embedding is correctly imported from max.nn.module_v3")
-    else:
-        results.append("❌ Embedding is not imported from max.nn.module_v3")
-        results.append(
-            "   Hint: Add 'from max.nn.module_v3 import Embedding, Module, Sequential'"
-        )
-
-    if has_module:
-        results.append("✅ Module is correctly imported from max.nn.module_v3")
-    else:
-        results.append("❌ Module is not imported from max.nn.module_v3")
-        results.append(
-            "   Hint: Add 'from max.nn.module_v3 import Embedding, Module, Sequential'"
-        )
-
-    if has_sequential:
-        results.append("✅ Sequential is correctly imported from max.nn.module_v3")
-    else:
-        results.append("❌ Sequential is not imported from max.nn.module_v3")
-        results.append(
-            "   Hint: Add 'from max.nn.module_v3 import Embedding, Module, Sequential'"
-        )
-
-    if has_config:
-        results.append("✅ GPT2Config is correctly imported")
-    else:
-        results.append("❌ GPT2Config is not imported")
-        results.append("   Hint: Add 'from solutions.solution_01 import GPT2Config'")
-
-    if has_layernorm:
-        results.append("✅ LayerNorm is correctly imported")
-    else:
-        results.append("❌ LayerNorm is not imported")
-        results.append("   Hint: Add 'from solutions.solution_10 import LayerNorm'")
-
-    if has_block:
-        results.append("✅ GPT2Block is correctly imported")
-    else:
-        results.append("❌ GPT2Block is not imported")
-        results.append("   Hint: Add 'from solutions.solution_11 import GPT2Block'")
 
     # Phase 2: Structure checks
     try:
-        from steps.step_12 import GPT2Model
+        from steps.step_14 import generate_next_token, generate_tokens
 
-        results.append("✅ GPT2Model class exists")
-    except ImportError:
-        results.append("❌ GPT2Model class not found in step_12 module")
-        results.append("   Hint: Create class GPT2Model(Module)")
+        results.append("✅ generate_next_token function exists")
+        results.append("✅ generate_tokens function exists")
+    except ImportError as e:
+        if "generate_next_token" in str(e):
+            results.append("❌ generate_next_token function not found")
+            results.append("   Hint: Define generate_next_token function")
+        if "generate_tokens" in str(e):
+            results.append("❌ generate_tokens function not found")
+            results.append("   Hint: Define generate_tokens function")
         print("\n".join(results))
         return
 
-    # Check inheritance
-    from max.nn.module_v3 import Module
-
-    if issubclass(GPT2Model, Module):
-        results.append("✅ GPT2Model inherits from Module")
-    else:
-        results.append("❌ GPT2Model must inherit from Module")
-
     # Phase 3: Implementation checks
-    if "self.wte = Embedding" in source or (
-        "self.wte =" in source
-        and "None" not in source.split("self.wte =")[1].split("\n")[0]
-    ):
-        results.append("✅ self.wte token embeddings created correctly")
+    if "model(input_ids)" in source.replace(" ", ""):
+        results.append("✅ Calls model to get logits")
     else:
-        results.append("❌ self.wte is not created correctly")
-        results.append(
-            "   Hint: self.wte = Embedding(config.vocab_size, dim=config.n_embd)"
-        )
+        results.append("❌ Should call model(input_ids) to get logits")
 
-    if "self.wpe = Embedding" in source or (
-        "self.wpe =" in source
-        and "None" not in source.split("self.wpe =")[1].split("\n")[0]
-    ):
-        results.append("✅ self.wpe position embeddings created correctly")
+    if "logits[0, -1, :]" in source.replace(
+        " ", ""
+    ) or "logits[0,-1,:]" in source.replace(" ", ""):
+        results.append("✅ Extracts last position logits correctly")
     else:
-        results.append("❌ self.wpe is not created correctly")
-        results.append(
-            "   Hint: self.wpe = Embedding(config.n_positions, dim=config.n_embd)"
-        )
+        results.append("❌ Should extract logits[0, -1, :] for next token")
 
-    if "self.h = Sequential" in source or (
-        "self.h =" in source
-        and "Sequential" in source
-        and "None" not in source.split("self.h =")[1].split("\n")[0]
-    ):
-        results.append("✅ self.h transformer blocks stack created correctly")
+    if "Tensor.constant" in source and "temperature" in source:
+        results.append("✅ Creates temperature tensor")
     else:
-        results.append("❌ self.h is not created correctly")
-        results.append(
-            "   Hint: self.h = Sequential(*(GPT2Block(config) for _ in range(config.n_layer)))"
-        )
+        results.append("❌ Should create temperature tensor with Tensor.constant")
 
-    if "self.ln_f = LayerNorm" in source or (
-        "self.ln_f =" in source
-        and "None" not in source.split("self.ln_f =")[1].split("\n")[0]
-    ):
-        results.append("✅ self.ln_f final layer norm created correctly")
+    if "F.softmax" in source:
+        results.append("✅ Uses F.softmax for probabilities")
     else:
-        results.append("❌ self.ln_f is not created correctly")
-        results.append(
-            "   Hint: self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)"
-        )
+        results.append("❌ Should use F.softmax to convert logits to probabilities")
 
-    # Check forward pass
-    if "input_ids.shape" in source:
-        results.append("✅ Forward pass extracts shape from input_ids")
+    if "np.random.choice" in source:
+        results.append("✅ Uses np.random.choice for sampling")
     else:
-        results.append(
-            "❌ Should extract batch_size and seq_length from input_ids.shape"
-        )
+        results.append("❌ Should use np.random.choice for sampling")
 
-    if "self.wte(" in source and "__call__" in source:
-        results.append("✅ Forward pass calls wte for token embeddings")
+    if "F.argmax" in source:
+        results.append("✅ Uses F.argmax for greedy decoding")
     else:
-        results.append("❌ Forward pass should call self.wte(input_ids)")
+        results.append("❌ Should use F.argmax for greedy decoding")
 
-    if "Tensor.arange" in source:
-        results.append("✅ Forward pass uses Tensor.arange for positions")
+    if "range(max_new_tokens)" in source.replace(" ", ""):
+        results.append("✅ Has generation loop")
     else:
-        results.append(
-            "❌ Forward pass should use Tensor.arange to create position indices"
-        )
+        results.append("❌ Should have loop: for _ in range(max_new_tokens)")
 
-    if "self.wpe(" in source and "__call__" in source:
-        results.append("✅ Forward pass calls wpe for position embeddings")
+    if "F.concat" in source:
+        results.append("✅ Uses F.concat to append tokens")
     else:
-        results.append("❌ Forward pass should call self.wpe on position indices")
-
-    if "tok_embeds + pos_embeds" in source.replace(" ", "") or "+ pos_embeds" in source:
-        results.append("✅ Forward pass combines token and position embeddings")
-    else:
-        results.append("❌ Should add tok_embeds + pos_embeds")
-
-    if "self.h(" in source and "__call__" in source:
-        results.append("✅ Forward pass applies transformer blocks (self.h)")
-    else:
-        results.append("❌ Forward pass should call self.h(x)")
-
-    if "self.ln_f(" in source and "__call__" in source:
-        results.append("✅ Forward pass applies final layer norm")
-    else:
-        results.append("❌ Forward pass should call self.ln_f(x)")
+        results.append("❌ Should use F.concat to append new tokens")
 
     # Phase 4: Placeholder detection
     none_lines = [
         line.strip()
         for line in source.split("\n")
-        if ("= None" in line or "return None" in line)
-        and not line.strip().startswith("#")
-        and "def " not in line
-        and "Optional" not in line
+        if ("return None" in line) and not line.strip().startswith("#")
     ]
     if none_lines:
-        results.append("❌ Found placeholder 'None' values that need to be replaced:")
-        for line in none_lines[:5]:
+        results.append("❌ Found placeholder 'return None' values:")
+        for line in none_lines[:3]:
             results.append(f"   {line}")
-        results.append(
-            "   Hint: Replace all 'None' values with the actual implementation"
-        )
     else:
         results.append("✅ All placeholder 'None' values have been replaced")
 
@@ -232,37 +132,14 @@ def test_step_12():
         from max.dtype import DType
         from max.experimental.tensor import Tensor
         from solutions.solution_01 import GPT2Config
-        import numpy as np
+        from solutions.solution_13 import MaxGPT2LMHeadModel
 
         config = GPT2Config()
-        model = GPT2Model(config)
-        results.append("✅ GPT2Model class can be instantiated")
+        model = MaxGPT2LMHeadModel(config)
 
-        # Check attributes
-        if hasattr(model, "wte"):
-            results.append("✅ GPT2Model.wte is initialized")
-        else:
-            results.append("❌ GPT2Model.wte attribute not found")
-
-        if hasattr(model, "wpe"):
-            results.append("✅ GPT2Model.wpe is initialized")
-        else:
-            results.append("❌ GPT2Model.wpe attribute not found")
-
-        if hasattr(model, "h"):
-            results.append("✅ GPT2Model.h is initialized")
-        else:
-            results.append("❌ GPT2Model.h attribute not found")
-
-        if hasattr(model, "ln_f"):
-            results.append("✅ GPT2Model.ln_f is initialized")
-        else:
-            results.append("❌ GPT2Model.ln_f attribute not found")
-
-        # Test forward pass
-        batch_size = 2
-        seq_length = 8
-        # Create random token IDs
+        # Test generate_next_token
+        batch_size = 1
+        seq_length = 5
         test_input = Tensor.randint(
             0,
             config.vocab_size,
@@ -272,24 +149,42 @@ def test_step_12():
             device=CPU(),
         )
 
-        output = model(test_input)
-        results.append("✅ GPT2Model forward pass executes without errors")
+        next_token = generate_next_token(
+            model, test_input, temperature=1.0, do_sample=True
+        )
+        results.append("✅ generate_next_token executes without errors (sampling)")
 
-        # Check output shape
-        expected_shape = (batch_size, seq_length, config.n_embd)
-        if output.shape == expected_shape:
-            results.append(f"✅ Output shape is correct: {expected_shape}")
+        next_token_greedy = generate_next_token(
+            model, test_input, temperature=1.0, do_sample=False
+        )
+        results.append("✅ generate_next_token executes without errors (greedy)")
+
+        # Test generate_tokens
+        generated = generate_tokens(
+            model, test_input, max_new_tokens=3, temperature=1.0, do_sample=True
+        )
+        results.append("✅ generate_tokens executes without errors")
+
+        expected_length = seq_length + 3
+        if generated.shape[1] == expected_length:
+            results.append(
+                f"✅ Generated sequence has correct length: {expected_length}"
+            )
         else:
             results.append(
-                f"❌ Output shape incorrect: expected {expected_shape}, got {output.shape}"
+                f"❌ Expected length {expected_length}, got {generated.shape[1]}"
             )
 
-        # Check output contains non-zero values
-        output_np = np.from_dlpack(output.to(CPU()))
-        if not np.allclose(output_np, 0):
-            results.append("✅ Output contains non-zero values")
+        # Check that generated tokens are different from input
+        import numpy as np
+
+        generated_np = np.from_dlpack(generated.to(CPU()))
+        test_input_np = np.from_dlpack(test_input.to(CPU()))
+
+        if generated_np.shape[1] > test_input_np.shape[1]:
+            results.append("✅ New tokens were generated")
         else:
-            results.append("❌ Output is all zeros")
+            results.append("❌ No new tokens generated")
 
     except Exception as e:
         results.append(f"❌ Functional test failed: {e}")
@@ -301,7 +196,7 @@ def test_step_12():
             results.append(f"   {error_lines[-1]}")
 
     # Print all results
-    print("Running tests for Step 12: Stacking Transformer Blocks...\n")
+    print("Running tests for Step 14: Text Generation...\n")
     print("Results:")
     print("\n".join(results))
 
@@ -311,6 +206,8 @@ def test_step_12():
         print("\n" + "=" * 60)
         print("🎉 All checks passed! Your implementation is complete.")
         print("=" * 60)
+        print("\n🎊 Congratulations! You've completed all 14 steps!")
+        print("You've built a complete GPT-2 model from scratch in MAX!")
     else:
         print("\n" + "=" * 60)
         print("⚠️ Some checks failed. Review the hints above and try again.")
@@ -318,4 +215,4 @@ def test_step_12():
 
 
 if __name__ == "__main__":
-    test_step_12()
+    test_step_14()

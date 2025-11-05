@@ -1,62 +1,47 @@
 # Step 01: Model configuration
 
-
 <div class="note">
     Learn to define the GPT-2 model architecture parameters using configuration classes.
 </div>
 
-## What is model configuration?
+## Defining the model architecture
 
-In this section you will create the `GPT2Config` class. This defines the GPT architecture or blueprint; specifying: dimensions, layer counts, and other model specific parameters that determine how the model processes information.
+Before you can implement GPT-2, you need to define its architecture - the dimensions, layer counts, and structural parameters that determine how the model processes information.
 
-You can view GPT-2's model parameters in the
-[config.json](https://huggingface.co/openai-community/gpt2/blob/main/config.json)
-file on Hugging Face.
+In this step, you'll create `GPT2Config`, a class that holds all the architectural decisions for GPT-2. This class describes things like: embedding dimensions, number of transformer layers, and number of attention heads. These parameters define the shape and capacity of your model.
 
-## Why create this configuration?
+OpenAI trained the original GPT-2 model with specific parameters that you can see in the [config.json file](https://huggingface.co/openai-community/gpt2/blob/main/config.json) on Hugging Face. By using the exact same values, we can access OpenAI's pretrained weights in subsequent steps.
 
-**1. Compatibility with Pretrained Models**: By matching Hugging Face's GPT-2 configuration exactly, we ensure our implementation can load their pretrained weights. This is crucial - it means we can leverage a model trained on billions of tokens without needing to retrain from scratch.
+## Understanding the parameters
 
-**2. Reproducibility**: Having configuration separate from implementation makes experiments reproducible. You can easily save, share, and recreate exact model architectures.
+The GPT-2 configuration consists of seven key parameters. Each one controls a different aspect of the model's architecture:
 
-**3. Code Organization**: Centralizing all hyperparameters in one place makes the codebase cleaner and easier to modify. Want to experiment with a different model size? Just change the config values.
+- `vocab_size`: Size of the token vocabulary (default: 50,257). This seemingly odd number is actually 50,000 Byte Pair Encoding tokens + 256 byte-level tokens (fallback for rare characters) + 1 special token.
+- `n_positions`: Maximum sequence length, also called the context window (default: 1,024). This limit is a tradeoff between memory usage, computational cost, and the amount of context the model can attend to. Longer sequences require quadratic memory in attention.
+- `n_embd`: Embedding dimension - the size of the hidden states that flow through the model (default: 768). This determines the model's capacity to represent information.
+- `n_layer`: Number of transformer blocks stacked vertically (default: 12). More layers allow the model to learn more complex patterns.
+- `n_head`: Number of attention heads per layer (default: 12). Multiple heads let the model attend to different types of patterns simultaneously.
+- `n_inner`: Dimension of the MLP intermediate layer (default: 3,072). This is 4× the embedding dimension, a ratio found empirically in the original Transformer paper to work well.
+- `layer_norm_epsilon`: Small constant for numerical stability in layer normalization (default: 1e-5). This prevents division by zero when variance is very small.
 
-**4. Foundation for Implementation**: This configuration serves as the contract for all subsequent steps. Every component we build (embeddings, attention, MLP layers) will reference these parameters to ensure dimensional consistency.
+These values define the _small_ GPT-2 model. OpenAI released four sizes (small, medium, large, XL), each with different configurations that scale up these parameters.
 
-### Key concepts
+## Implementing the configuration
 
-**Dataclasses in Python**:
+Now let's implement this yourself. You'll create the `GPT2Config` class using Python's [`@dataclass`](https://docs.python.org/3/library/dataclasses.html) decorator. Dataclasses reduce boilerplate.
 
-- Python's [`@dataclass`](https://docs.python.org/3/library/dataclasses.html) decorator reduces boilerplate code when creating configuration objects and provides clean syntax for defining class attributes with type hints and default values
+Instead of writing `__init__` and defining each parameter manually, you just declare the fields with type hints and default values.
 
-**Model Configuration**:
-- Configuration objects centralize hyperparameters and architecture settings in one place
-- Makes it easy to experiment with different model sizes and settings
-- Essential for reproducibility and model initialization
+First, you'll need to import the dataclass decorator from the dataclasses module. Then you'll add the `@dataclass` decorator to the `GPT2Config` class definition.
 
-**Matching Hugging Face Models**:
-- Using the same configuration values as [Hugging Face's pretrained GPT-2](https://huggingface.co/openai-community/gpt2) ensures weight compatibility
-- Allows loading and using pretrained weights for inference without retraining
-- Configuration values are accessed with the [transformers library](https://pypi.org/project/transformers/) in `hugging-face-model.py`
+The actual parameter values come from Hugging Face. You can get them in two ways:
 
-**GPT-2 Architecture Parameters**:
-- `vocab_size`: Size of the token vocabulary (number of unique tokens the model can process)
-- `n_positions`: Maximum sequence length (context window)
-- `n_embd`: Embedding dimension (size of hidden states)
-- `n_layer`: Number of transformer blocks stacked vertically
-- `n_head`: Number of attention heads per layer
-- `n_inner`: Dimension of the MLP intermediate layer (typically 4x n_embd)
-- `layer_norm_epsilon`: Small constant for numerical stability in layer normalization
+- **Option 1**: Run `pixi run huggingface` to access these parameters programmatically from the Hugging Face `transformers` library.
+- **Option 2**: Read the values directly from the [GPT-2 model card](https://huggingface.co/openai-community/gpt2/blob/main/config.json).
 
-### Implementation tasks (`step_01.py`)
-1. Import dataclass from the dataclasses module 
-2. Add the Python @dataclass decorator to the GPT2Config class
-3. Get the correct values for the model parameters
-    - Option 1: Run `pixi run huggingface` to access these parameters from the Hugging Face `transformers` library
-    - Option 2: Read the values from [GPT3 model card](https://huggingface.co/openai-community/gpt2/blob/main/config.json) on huggingface.co
-4. Replace the None of the GPT2Config properties with the correct values
+Once you have the values, replace each `None` in the `GPT2Config` class properties with the correct numbers from the configuration.
 
-**Implementation**:
+**Implementation** (`step_01.py`):
 
 ```python
 {{#include ../../steps/step_01.py}}
@@ -64,8 +49,15 @@ file on Hugging Face.
 
 ### Validation
 
-run `pixi run s01`
+Run `pixi run s01` to verify your implementation matches the expected configuration.
 
-**Reference**: `steps/step_01.py`
+<details>
+<summary>Show solution</summary>
+
+```python
+{{#include ../../solutions/solution_01.py}}
+```
+
+</details>
 
 **Next**: In [Step 02](./step_02.md), you'll implement causal masking to prevent tokens from attending to future positions in autoregressive generation.

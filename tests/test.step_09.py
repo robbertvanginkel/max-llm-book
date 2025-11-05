@@ -1,14 +1,14 @@
-"""Tests for Step 09: Multi-head Attention"""
+"""Tests for Step 11: Transformer Block"""
 
 import ast
 from pathlib import Path
 
 
-def test_step_09():
-    """Comprehensive validation for Step 09 implementation."""
+def test_step_11():
+    """Comprehensive validation for Step 11 implementation."""
 
     results = []
-    step_file = Path("steps/step_09.py")
+    step_file = Path("steps/step_11.py")
 
     # Read source
     if not step_file.exists():
@@ -19,182 +19,161 @@ def test_step_09():
     tree = ast.parse(source)
 
     # Phase 1: Import checks
-    has_math = False
-    has_linear = False
     has_module = False
-    has_functional = False
+    has_config = False
+    has_mlp = False
+    has_attention = False
+    has_layernorm = False
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name == "math":
-                    has_math = True
         if isinstance(node, ast.ImportFrom):
             if node.module == "max.nn.module_v3":
                 for alias in node.names:
-                    if alias.name == "Linear":
-                        has_linear = True
                     if alias.name == "Module":
                         has_module = True
-            if node.module == "max.experimental":
+            if node.module == "solutions.solution_01":
                 for alias in node.names:
-                    if alias.name == "functional" or (
-                        alias.asname and alias.asname == "F"
-                    ):
-                        has_functional = True
-
-    if has_math:
-        results.append("✅ math is correctly imported")
-    else:
-        results.append("❌ math is not imported")
-        results.append("   Hint: Add 'import math'")
-
-    if has_linear:
-        results.append("✅ Linear is correctly imported from max.nn.module_v3")
-    else:
-        results.append("❌ Linear is not imported from max.nn.module_v3")
-        results.append("   Hint: Add 'from max.nn.module_v3 import Linear, Module'")
+                    if alias.name == "GPT2Config":
+                        has_config = True
+            if node.module == "solutions.solution_04":
+                for alias in node.names:
+                    if alias.name == "GPT2MLP":
+                        has_mlp = True
+            if node.module == "solutions.solution_09":
+                for alias in node.names:
+                    if alias.name == "GPT2MultiHeadAttention":
+                        has_attention = True
+            if node.module == "solutions.solution_10":
+                for alias in node.names:
+                    if alias.name == "LayerNorm":
+                        has_layernorm = True
 
     if has_module:
         results.append("✅ Module is correctly imported from max.nn.module_v3")
     else:
         results.append("❌ Module is not imported from max.nn.module_v3")
-        results.append("   Hint: Add 'from max.nn.module_v3 import Linear, Module'")
+        results.append("   Hint: Add 'from max.nn.module_v3 import Module'")
 
-    if has_functional:
-        results.append("✅ functional is correctly imported from max.experimental")
+    if has_config:
+        results.append("✅ GPT2Config is correctly imported from solutions.solution_01")
     else:
-        results.append("❌ functional is not imported from max.experimental")
-        results.append("   Hint: Add 'from max.experimental import functional as F'")
+        results.append("❌ GPT2Config is not imported")
+        results.append("   Hint: Add 'from solutions.solution_01 import GPT2Config'")
+
+    if has_mlp:
+        results.append("✅ GPT2MLP is correctly imported from solutions.solution_04")
+    else:
+        results.append("❌ GPT2MLP is not imported")
+        results.append("   Hint: Add 'from solutions.solution_04 import GPT2MLP'")
+
+    if has_attention:
+        results.append(
+            "✅ GPT2MultiHeadAttention is correctly imported from solutions.solution_09"
+        )
+    else:
+        results.append("❌ GPT2MultiHeadAttention is not imported")
+        results.append(
+            "   Hint: Add 'from solutions.solution_09 import GPT2MultiHeadAttention'"
+        )
+
+    if has_layernorm:
+        results.append("✅ LayerNorm is correctly imported from solutions.solution_10")
+    else:
+        results.append("❌ LayerNorm is not imported")
+        results.append("   Hint: Add 'from solutions.solution_10 import LayerNorm'")
 
     # Phase 2: Structure checks
     try:
-        from steps.step_09 import GPT2MultiHeadAttention, causal_mask
+        from steps.step_11 import GPT2Block
 
-        results.append("✅ GPT2MultiHeadAttention class exists")
-        results.append("✅ causal_mask function exists")
-    except ImportError as e:
-        if "GPT2MultiHeadAttention" in str(e):
-            results.append(
-                "❌ GPT2MultiHeadAttention class not found in step_09 module"
-            )
-            results.append("   Hint: Create class GPT2MultiHeadAttention(Module)")
-        if "causal_mask" in str(e):
-            results.append("❌ causal_mask function not found")
-            results.append("   Hint: Copy causal_mask from solution_08.py")
+        results.append("✅ GPT2Block class exists")
+    except ImportError:
+        results.append("❌ GPT2Block class not found in step_11 module")
+        results.append("   Hint: Create class GPT2Block(Module)")
         print("\n".join(results))
         return
 
     # Check inheritance
     from max.nn.module_v3 import Module
 
-    if issubclass(GPT2MultiHeadAttention, Module):
-        results.append("✅ GPT2MultiHeadAttention inherits from Module")
+    if issubclass(GPT2Block, Module):
+        results.append("✅ GPT2Block inherits from Module")
     else:
-        results.append("❌ GPT2MultiHeadAttention must inherit from Module")
+        results.append("❌ GPT2Block must inherit from Module")
 
     # Phase 3: Implementation checks
-    # Check layer creation
-    if "self.c_attn = Linear" in source or (
-        "self.c_attn =" in source
-        and "None" not in source.split("self.c_attn =")[1].split("\n")[0]
+    if "self.ln_1 = LayerNorm" in source or (
+        "self.ln_1 =" in source
+        and "None" not in source.split("self.ln_1 =")[1].split("\n")[0]
     ):
-        results.append("✅ self.c_attn linear layer is created correctly")
+        results.append("✅ self.ln_1 is created correctly")
     else:
-        results.append("❌ self.c_attn linear layer is not created correctly")
+        results.append("❌ self.ln_1 layer norm is not created correctly")
         results.append(
-            "   Hint: Use Linear(self.embed_dim, 3 * self.embed_dim, bias=True)"
+            "   Hint: self.ln_1 = LayerNorm(hidden_size, eps=config.layer_norm_epsilon)"
         )
 
-    if "self.c_proj = Linear" in source or (
-        "self.c_proj =" in source
-        and "None" not in source.split("self.c_proj =")[1].split("\n")[0]
+    if "self.attn = GPT2MultiHeadAttention" in source or (
+        "self.attn =" in source
+        and "None" not in source.split("self.attn =")[1].split("\n")[0]
     ):
-        results.append("✅ self.c_proj linear layer is created correctly")
+        results.append("✅ self.attn is created correctly")
     else:
-        results.append("❌ self.c_proj linear layer is not created correctly")
-        results.append("   Hint: Use Linear(self.embed_dim, self.embed_dim, bias=True)")
+        results.append("❌ self.attn is not created correctly")
+        results.append("   Hint: self.attn = GPT2MultiHeadAttention(config)")
 
-    # Check _split_heads
-    if "tensor.reshape" in source and "_split_heads" in source:
-        results.append("✅ _split_heads uses tensor.reshape")
+    if "self.ln_2 = LayerNorm" in source or (
+        "self.ln_2 =" in source
+        and "None" not in source.split("self.ln_2 =")[1].split("\n")[0]
+    ):
+        results.append("✅ self.ln_2 is created correctly")
     else:
-        results.append("❌ _split_heads should use tensor.reshape")
-        results.append("   Hint: tensor = tensor.reshape(new_shape)")
-
-    if "transpose(-3, -2)" in source.replace(
-        " ", ""
-    ) or "transpose(-3,-2)" in source.replace(" ", ""):
-        results.append("✅ _split_heads uses transpose(-3, -2)")
-    else:
-        results.append("❌ _split_heads should use transpose(-3, -2)")
-        results.append("   Hint: return tensor.transpose(-3, -2)")
-
-    # Check _merge_heads
-    merge_heads_source = (
-        source[source.find("def _merge_heads") : source.find("def _attn")]
-        if "def _attn" in source
-        else source[source.find("def _merge_heads") :]
-    )
-    if "transpose" in merge_heads_source and "reshape" in merge_heads_source:
-        results.append("✅ _merge_heads uses transpose and reshape")
-    else:
-        results.append("❌ _merge_heads should use transpose and reshape")
+        results.append("❌ self.ln_2 layer norm is not created correctly")
         results.append(
-            "   Hint: tensor.transpose(-3, -2) then tensor.reshape(new_shape)"
+            "   Hint: self.ln_2 = LayerNorm(hidden_size, eps=config.layer_norm_epsilon)"
         )
 
-    # Check _attn
-    if "query @ key.transpose(-1, -2)" in source.replace(" ", ""):
-        results.append("✅ _attn computes Q @ K^T")
+    if "self.mlp = GPT2MLP" in source or (
+        "self.mlp =" in source
+        and "None" not in source.split("self.mlp =")[1].split("\n")[0]
+    ):
+        results.append("✅ self.mlp is created correctly")
     else:
-        results.append("❌ _attn should compute query @ key.transpose(-1, -2)")
-        results.append("   Hint: Copy attention computation from Step 08")
+        results.append("❌ self.mlp is not created correctly")
+        results.append("   Hint: self.mlp = GPT2MLP(inner_dim, config)")
 
-    if source.count("F.softmax") > 0:
-        results.append("✅ _attn uses F.softmax")
+    # Check forward pass structure
+    if "self.ln_1(hidden_states)" in source.replace(" ", ""):
+        results.append("✅ Forward pass calls ln_1")
     else:
-        results.append("❌ _attn should use F.softmax")
-        results.append("   Hint: Copy attention computation from Step 08")
+        results.append("❌ Forward pass should call self.ln_1(hidden_states)")
 
-    # Check forward pass
-    if "self.c_attn(hidden_states)" in source.replace(" ", ""):
-        results.append("✅ Forward pass projects with c_attn")
+    if "self.attn(" in source:
+        results.append("✅ Forward pass calls attn")
     else:
-        results.append("❌ Forward pass should call self.c_attn(hidden_states)")
-        results.append("   Hint: qkv = self.c_attn(hidden_states)")
+        results.append("❌ Forward pass should call self.attn")
 
-    if "F.split" in source and "__call__" in source:
-        results.append("✅ Forward pass splits Q, K, V")
+    if "self.ln_2(" in source:
+        results.append("✅ Forward pass calls ln_2")
     else:
-        results.append("❌ Forward pass should use F.split to separate Q, K, V")
-        results.append("   Hint: query, key, value = F.split(qkv, ...)")
+        results.append("❌ Forward pass should call self.ln_2")
 
-    if "self._split_heads" in source:
-        results.append("✅ Forward pass calls _split_heads")
+    if "self.mlp(" in source:
+        results.append("✅ Forward pass calls mlp")
     else:
-        results.append("❌ Forward pass should call self._split_heads")
+        results.append("❌ Forward pass should call self.mlp")
+
+    # Check residual connections
+    residual_count = source.count("residual =")
+    if residual_count >= 2:
+        results.append("✅ Forward pass uses residual connections (at least 2)")
+    else:
         results.append(
-            "   Hint: query = self._split_heads(query, self.num_heads, self.head_dim)"
+            "❌ Forward pass should store residual twice (before attn and mlp)"
         )
-
-    if "self._attn" in source:
-        results.append("✅ Forward pass calls _attn")
-    else:
-        results.append("❌ Forward pass should call self._attn")
-        results.append("   Hint: attn_output = self._attn(query, key, value)")
-
-    if "self._merge_heads" in source:
-        results.append("✅ Forward pass calls _merge_heads")
-    else:
-        results.append("❌ Forward pass should call self._merge_heads")
-        results.append("   Hint: attn_output = self._merge_heads(attn_output, ...)")
-
-    if "self.c_proj" in source and "__call__" in source:
-        results.append("✅ Forward pass uses c_proj for output projection")
-    else:
-        results.append("❌ Forward pass should call self.c_proj")
-        results.append("   Hint: attn_output = self.c_proj(attn_output)")
+        results.append(
+            f"   Found {residual_count} residual assignments, need at least 2"
+        )
 
     # Phase 4: Placeholder detection
     none_lines = [
@@ -224,19 +203,29 @@ def test_step_09():
         import numpy as np
 
         config = GPT2Config()
-        mha = GPT2MultiHeadAttention(config)
-        results.append("✅ GPT2MultiHeadAttention class can be instantiated")
+        block = GPT2Block(config)
+        results.append("✅ GPT2Block class can be instantiated")
 
         # Check attributes
-        if hasattr(mha, "c_attn"):
-            results.append("✅ GPT2MultiHeadAttention.c_attn is initialized")
+        if hasattr(block, "ln_1"):
+            results.append("✅ GPT2Block.ln_1 is initialized")
         else:
-            results.append("❌ GPT2MultiHeadAttention.c_attn attribute not found")
+            results.append("❌ GPT2Block.ln_1 attribute not found")
 
-        if hasattr(mha, "c_proj"):
-            results.append("✅ GPT2MultiHeadAttention.c_proj is initialized")
+        if hasattr(block, "attn"):
+            results.append("✅ GPT2Block.attn is initialized")
         else:
-            results.append("❌ GPT2MultiHeadAttention.c_proj attribute not found")
+            results.append("❌ GPT2Block.attn attribute not found")
+
+        if hasattr(block, "ln_2"):
+            results.append("✅ GPT2Block.ln_2 is initialized")
+        else:
+            results.append("❌ GPT2Block.ln_2 attribute not found")
+
+        if hasattr(block, "mlp"):
+            results.append("✅ GPT2Block.mlp is initialized")
+        else:
+            results.append("❌ GPT2Block.mlp attribute not found")
 
         # Test forward pass
         batch_size = 2
@@ -245,8 +234,8 @@ def test_step_09():
             batch_size, seq_length, config.n_embd, dtype=DType.float32, device=CPU()
         )
 
-        output = mha(test_input)
-        results.append("✅ GPT2MultiHeadAttention forward pass executes without errors")
+        output = block(test_input)
+        results.append("✅ GPT2Block forward pass executes without errors")
 
         # Check output shape
         expected_shape = (batch_size, seq_length, config.n_embd)
@@ -254,7 +243,7 @@ def test_step_09():
             results.append(f"✅ Output shape is correct: {expected_shape}")
         else:
             results.append(
-                f"❌ Output shape is incorrect: expected {expected_shape}, got {output.shape}"
+                f"❌ Output shape incorrect: expected {expected_shape}, got {output.shape}"
             )
 
         # Check output contains non-zero values
@@ -263,33 +252,6 @@ def test_step_09():
             results.append("✅ Output contains non-zero values")
         else:
             results.append("❌ Output is all zeros")
-
-        # Test _split_heads
-        test_tensor = Tensor.randn(
-            batch_size, seq_length, config.n_embd, dtype=DType.float32, device=CPU()
-        )
-        split_output = mha._split_heads(test_tensor, config.n_head, mha.head_dim)
-        expected_split_shape = (batch_size, config.n_head, seq_length, mha.head_dim)
-        if split_output.shape == expected_split_shape:
-            results.append(
-                f"✅ _split_heads output shape is correct: {expected_split_shape}"
-            )
-        else:
-            results.append(
-                f"❌ _split_heads output shape incorrect: expected {expected_split_shape}, got {split_output.shape}"
-            )
-
-        # Test _merge_heads
-        merge_output = mha._merge_heads(split_output, config.n_head, mha.head_dim)
-        expected_merge_shape = (batch_size, seq_length, config.n_embd)
-        if merge_output.shape == expected_merge_shape:
-            results.append(
-                f"✅ _merge_heads output shape is correct: {expected_merge_shape}"
-            )
-        else:
-            results.append(
-                f"❌ _merge_heads output shape incorrect: expected {expected_merge_shape}, got {merge_output.shape}"
-            )
 
     except Exception as e:
         results.append(f"❌ Functional test failed: {e}")
@@ -301,7 +263,7 @@ def test_step_09():
             results.append(f"   {error_lines[-1]}")
 
     # Print all results
-    print("Running tests for Step 09: Multi-head Attention...\n")
+    print("Running tests for Step 11: Transformer Block...\n")
     print("Results:")
     print("\n".join(results))
 
@@ -318,4 +280,4 @@ def test_step_09():
 
 
 if __name__ == "__main__":
-    test_step_09()
+    test_step_11()

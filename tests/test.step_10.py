@@ -1,14 +1,14 @@
-"""Tests for Step 10: Residual Connections and Layer Normalization"""
+"""Tests for Step 12: Stacking Transformer Blocks"""
 
 import ast
 from pathlib import Path
 
 
-def test_step_10():
-    """Comprehensive validation for Step 10 implementation."""
+def test_step_12():
+    """Comprehensive validation for Step 12 implementation."""
 
     results = []
-    step_file = Path("steps/step_10.py")
+    step_file = Path("steps/step_12.py")
 
     # Read source
     if not step_file.exists():
@@ -19,37 +19,40 @@ def test_step_10():
     tree = ast.parse(source)
 
     # Phase 1: Import checks
-    has_functional = False
     has_tensor = False
-    has_dimlike = False
+    has_embedding = False
     has_module = False
+    has_sequential = False
+    has_config = False
+    has_layernorm = False
+    has_block = False
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            if node.module == "max.experimental":
-                for alias in node.names:
-                    if alias.name == "functional" or (
-                        alias.asname and alias.asname == "F"
-                    ):
-                        has_functional = True
             if node.module == "max.experimental.tensor":
                 for alias in node.names:
                     if alias.name == "Tensor":
                         has_tensor = True
-            if node.module == "max.graph":
-                for alias in node.names:
-                    if alias.name == "DimLike":
-                        has_dimlike = True
             if node.module == "max.nn.module_v3":
                 for alias in node.names:
+                    if alias.name == "Embedding":
+                        has_embedding = True
                     if alias.name == "Module":
                         has_module = True
-
-    if has_functional:
-        results.append("✅ functional is correctly imported from max.experimental")
-    else:
-        results.append("❌ functional is not imported from max.experimental")
-        results.append("   Hint: Add 'from max.experimental import functional as F'")
+                    if alias.name == "Sequential":
+                        has_sequential = True
+            if node.module == "solutions.solution_01":
+                for alias in node.names:
+                    if alias.name == "GPT2Config":
+                        has_config = True
+            if node.module == "solutions.solution_10":
+                for alias in node.names:
+                    if alias.name == "LayerNorm":
+                        has_layernorm = True
+            if node.module == "solutions.solution_11":
+                for alias in node.names:
+                    if alias.name == "GPT2Block":
+                        has_block = True
 
     if has_tensor:
         results.append("✅ Tensor is correctly imported from max.experimental.tensor")
@@ -57,103 +60,152 @@ def test_step_10():
         results.append("❌ Tensor is not imported from max.experimental.tensor")
         results.append("   Hint: Add 'from max.experimental.tensor import Tensor'")
 
-    if has_dimlike:
-        results.append("✅ DimLike is correctly imported from max.graph")
+    if has_embedding:
+        results.append("✅ Embedding is correctly imported from max.nn.module_v3")
     else:
-        results.append("❌ DimLike is not imported from max.graph")
-        results.append("   Hint: Add 'from max.graph import DimLike'")
+        results.append("❌ Embedding is not imported from max.nn.module_v3")
+        results.append(
+            "   Hint: Add 'from max.nn.module_v3 import Embedding, Module, Sequential'"
+        )
 
     if has_module:
         results.append("✅ Module is correctly imported from max.nn.module_v3")
     else:
         results.append("❌ Module is not imported from max.nn.module_v3")
-        results.append("   Hint: Add 'from max.nn.module_v3 import Module'")
+        results.append(
+            "   Hint: Add 'from max.nn.module_v3 import Embedding, Module, Sequential'"
+        )
+
+    if has_sequential:
+        results.append("✅ Sequential is correctly imported from max.nn.module_v3")
+    else:
+        results.append("❌ Sequential is not imported from max.nn.module_v3")
+        results.append(
+            "   Hint: Add 'from max.nn.module_v3 import Embedding, Module, Sequential'"
+        )
+
+    if has_config:
+        results.append("✅ GPT2Config is correctly imported")
+    else:
+        results.append("❌ GPT2Config is not imported")
+        results.append("   Hint: Add 'from solutions.solution_01 import GPT2Config'")
+
+    if has_layernorm:
+        results.append("✅ LayerNorm is correctly imported")
+    else:
+        results.append("❌ LayerNorm is not imported")
+        results.append("   Hint: Add 'from solutions.solution_10 import LayerNorm'")
+
+    if has_block:
+        results.append("✅ GPT2Block is correctly imported")
+    else:
+        results.append("❌ GPT2Block is not imported")
+        results.append("   Hint: Add 'from solutions.solution_11 import GPT2Block'")
 
     # Phase 2: Structure checks
     try:
-        from steps.step_10 import LayerNorm, ResidualBlock, apply_residual_connection
+        from steps.step_12 import GPT2Model
 
-        results.append("✅ LayerNorm class exists")
-        results.append("✅ ResidualBlock class exists")
-        results.append("✅ apply_residual_connection function exists")
-    except ImportError as e:
-        if "LayerNorm" in str(e):
-            results.append("❌ LayerNorm class not found in step_10 module")
-            results.append("   Hint: Create class LayerNorm(Module)")
-        if "ResidualBlock" in str(e):
-            results.append("❌ ResidualBlock class not found in step_10 module")
-            results.append("   Hint: Create class ResidualBlock(Module)")
-        if "apply_residual_connection" in str(e):
-            results.append("❌ apply_residual_connection function not found")
-            results.append("   Hint: Define apply_residual_connection function")
+        results.append("✅ GPT2Model class exists")
+    except ImportError:
+        results.append("❌ GPT2Model class not found in step_12 module")
+        results.append("   Hint: Create class GPT2Model(Module)")
         print("\n".join(results))
         return
 
     # Check inheritance
     from max.nn.module_v3 import Module
 
-    if issubclass(LayerNorm, Module):
-        results.append("✅ LayerNorm inherits from Module")
+    if issubclass(GPT2Model, Module):
+        results.append("✅ GPT2Model inherits from Module")
     else:
-        results.append("❌ LayerNorm must inherit from Module")
-
-    if issubclass(ResidualBlock, Module):
-        results.append("✅ ResidualBlock inherits from Module")
-    else:
-        results.append("❌ ResidualBlock must inherit from Module")
+        results.append("❌ GPT2Model must inherit from Module")
 
     # Phase 3: Implementation checks
-    # Check LayerNorm
-    if "Tensor.ones" in source:
-        results.append("✅ LayerNorm uses Tensor.ones for weight")
+    if "self.wte = Embedding" in source or (
+        "self.wte =" in source
+        and "None" not in source.split("self.wte =")[1].split("\n")[0]
+    ):
+        results.append("✅ self.wte token embeddings created correctly")
     else:
-        results.append("❌ LayerNorm should use Tensor.ones for weight")
-        results.append("   Hint: self.weight = Tensor.ones([dim])")
-
-    if "Tensor.zeros" in source:
-        results.append("✅ LayerNorm uses Tensor.zeros for bias")
-    else:
-        results.append("❌ LayerNorm should use Tensor.zeros for bias")
-        results.append("   Hint: self.bias = Tensor.zeros([dim])")
-
-    if "F.layer_norm" in source:
-        results.append("✅ LayerNorm uses F.layer_norm")
-    else:
-        results.append("❌ LayerNorm should use F.layer_norm")
+        results.append("❌ self.wte is not created correctly")
         results.append(
-            "   Hint: return F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)"
+            "   Hint: self.wte = Embedding(config.vocab_size, dim=config.n_embd)"
         )
 
-    if "gamma=self.weight" in source or "gamma = self.weight" in source:
-        results.append("✅ LayerNorm passes weight as gamma parameter")
-    else:
-        results.append("❌ LayerNorm should pass self.weight as gamma")
-        results.append("   Hint: gamma=self.weight in F.layer_norm call")
-
-    if "beta=self.bias" in source or "beta = self.bias" in source:
-        results.append("✅ LayerNorm passes bias as beta parameter")
-    else:
-        results.append("❌ LayerNorm should pass self.bias as beta")
-        results.append("   Hint: beta=self.bias in F.layer_norm call")
-
-    # Check ResidualBlock
-    if "self.ln = LayerNorm" in source or (
-        "self.ln =" in source
-        and "None" not in source.split("self.ln =")[1].split("\n")[0]
+    if "self.wpe = Embedding" in source or (
+        "self.wpe =" in source
+        and "None" not in source.split("self.wpe =")[1].split("\n")[0]
     ):
-        results.append("✅ ResidualBlock creates LayerNorm instance")
+        results.append("✅ self.wpe position embeddings created correctly")
     else:
-        results.append("❌ ResidualBlock should create LayerNorm instance")
-        results.append("   Hint: self.ln = LayerNorm(dim, eps=eps)")
+        results.append("❌ self.wpe is not created correctly")
+        results.append(
+            "   Hint: self.wpe = Embedding(config.n_positions, dim=config.n_embd)"
+        )
 
-    # Check residual connections (addition)
-    if (
-        source.count(" + ") >= 2 or source.count("+") >= 4
-    ):  # At least in ResidualBlock and apply_residual_connection
-        results.append("✅ Residual connections use addition operator")
+    if "self.h = Sequential" in source or (
+        "self.h =" in source
+        and "Sequential" in source
+        and "None" not in source.split("self.h =")[1].split("\n")[0]
+    ):
+        results.append("✅ self.h transformer blocks stack created correctly")
     else:
-        results.append("❌ Residual connections should use + operator")
-        results.append("   Hint: return x + sublayer_output")
+        results.append("❌ self.h is not created correctly")
+        results.append(
+            "   Hint: self.h = Sequential(*(GPT2Block(config) for _ in range(config.n_layer)))"
+        )
+
+    if "self.ln_f = LayerNorm" in source or (
+        "self.ln_f =" in source
+        and "None" not in source.split("self.ln_f =")[1].split("\n")[0]
+    ):
+        results.append("✅ self.ln_f final layer norm created correctly")
+    else:
+        results.append("❌ self.ln_f is not created correctly")
+        results.append(
+            "   Hint: self.ln_f = LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)"
+        )
+
+    # Check forward pass
+    if "input_ids.shape" in source:
+        results.append("✅ Forward pass extracts shape from input_ids")
+    else:
+        results.append(
+            "❌ Should extract batch_size and seq_length from input_ids.shape"
+        )
+
+    if "self.wte(" in source and "__call__" in source:
+        results.append("✅ Forward pass calls wte for token embeddings")
+    else:
+        results.append("❌ Forward pass should call self.wte(input_ids)")
+
+    if "Tensor.arange" in source:
+        results.append("✅ Forward pass uses Tensor.arange for positions")
+    else:
+        results.append(
+            "❌ Forward pass should use Tensor.arange to create position indices"
+        )
+
+    if "self.wpe(" in source and "__call__" in source:
+        results.append("✅ Forward pass calls wpe for position embeddings")
+    else:
+        results.append("❌ Forward pass should call self.wpe on position indices")
+
+    if "tok_embeds + pos_embeds" in source.replace(" ", "") or "+ pos_embeds" in source:
+        results.append("✅ Forward pass combines token and position embeddings")
+    else:
+        results.append("❌ Should add tok_embeds + pos_embeds")
+
+    if "self.h(" in source and "__call__" in source:
+        results.append("✅ Forward pass applies transformer blocks (self.h)")
+    else:
+        results.append("❌ Forward pass should call self.h(x)")
+
+    if "self.ln_f(" in source and "__call__" in source:
+        results.append("✅ Forward pass applies final layer norm")
+    else:
+        results.append("❌ Forward pass should call self.ln_f(x)")
 
     # Phase 4: Placeholder detection
     none_lines = [
@@ -179,102 +231,65 @@ def test_step_10():
         from max.driver import CPU
         from max.dtype import DType
         from max.experimental.tensor import Tensor
+        from solutions.solution_01 import GPT2Config
         import numpy as np
 
-        # Test LayerNorm
-        dim = 768
-        ln = LayerNorm(dim, eps=1e-5)
-        results.append("✅ LayerNorm class can be instantiated")
+        config = GPT2Config()
+        model = GPT2Model(config)
+        results.append("✅ GPT2Model class can be instantiated")
 
         # Check attributes
-        if hasattr(ln, "weight"):
-            results.append("✅ LayerNorm.weight is initialized")
+        if hasattr(model, "wte"):
+            results.append("✅ GPT2Model.wte is initialized")
         else:
-            results.append("❌ LayerNorm.weight attribute not found")
+            results.append("❌ GPT2Model.wte attribute not found")
 
-        if hasattr(ln, "bias"):
-            results.append("✅ LayerNorm.bias is initialized")
+        if hasattr(model, "wpe"):
+            results.append("✅ GPT2Model.wpe is initialized")
         else:
-            results.append("❌ LayerNorm.bias attribute not found")
+            results.append("❌ GPT2Model.wpe attribute not found")
+
+        if hasattr(model, "h"):
+            results.append("✅ GPT2Model.h is initialized")
+        else:
+            results.append("❌ GPT2Model.h attribute not found")
+
+        if hasattr(model, "ln_f"):
+            results.append("✅ GPT2Model.ln_f is initialized")
+        else:
+            results.append("❌ GPT2Model.ln_f attribute not found")
 
         # Test forward pass
         batch_size = 2
         seq_length = 8
-        test_input = Tensor.randn(
-            batch_size, seq_length, dim, dtype=DType.float32, device=CPU()
+        # Create random token IDs
+        test_input = Tensor.randint(
+            0,
+            config.vocab_size,
+            batch_size,
+            seq_length,
+            dtype=DType.int64,
+            device=CPU(),
         )
 
-        output = ln(test_input)
-        results.append("✅ LayerNorm forward pass executes without errors")
+        output = model(test_input)
+        results.append("✅ GPT2Model forward pass executes without errors")
 
         # Check output shape
-        expected_shape = (batch_size, seq_length, dim)
+        expected_shape = (batch_size, seq_length, config.n_embd)
         if output.shape == expected_shape:
-            results.append(f"✅ LayerNorm output shape is correct: {expected_shape}")
+            results.append(f"✅ Output shape is correct: {expected_shape}")
         else:
             results.append(
-                f"❌ LayerNorm output shape incorrect: expected {expected_shape}, got {output.shape}"
+                f"❌ Output shape incorrect: expected {expected_shape}, got {output.shape}"
             )
 
-        # Check normalization properties (mean ≈ 0, std ≈ 1)
+        # Check output contains non-zero values
         output_np = np.from_dlpack(output.to(CPU()))
-        mean = output_np.mean(axis=-1)
-        std = output_np.std(axis=-1)
-
-        if np.allclose(mean, 0, atol=1e-5):
-            results.append("✅ LayerNorm output has mean ≈ 0 (normalized)")
+        if not np.allclose(output_np, 0):
+            results.append("✅ Output contains non-zero values")
         else:
-            results.append(
-                f"⚠️ LayerNorm output mean is {mean.mean():.6f} (expected ≈ 0)"
-            )
-
-        if np.allclose(std, 1, atol=1e-4):
-            results.append("✅ LayerNorm output has std ≈ 1 (normalized)")
-        else:
-            results.append(f"⚠️ LayerNorm output std is {std.mean():.6f} (expected ≈ 1)")
-
-        # Test ResidualBlock
-        rb = ResidualBlock(dim, eps=1e-5)
-        results.append("✅ ResidualBlock class can be instantiated")
-
-        if hasattr(rb, "ln"):
-            results.append("✅ ResidualBlock.ln is initialized")
-        else:
-            results.append("❌ ResidualBlock.ln attribute not found")
-
-        # Test residual connection
-        test_residual = Tensor.randn(
-            batch_size, seq_length, dim, dtype=DType.float32, device=CPU()
-        )
-        test_sublayer = Tensor.randn(
-            batch_size, seq_length, dim, dtype=DType.float32, device=CPU()
-        )
-
-        residual_output = rb(test_residual, test_sublayer)
-        results.append("✅ ResidualBlock forward pass executes without errors")
-
-        # Check that output equals input + sublayer_output
-        expected_output_np = np.from_dlpack(test_residual.to(CPU())) + np.from_dlpack(
-            test_sublayer.to(CPU())
-        )
-        residual_output_np = np.from_dlpack(residual_output.to(CPU()))
-
-        if np.allclose(residual_output_np, expected_output_np, atol=1e-5):
-            results.append("✅ ResidualBlock correctly adds input + sublayer_output")
-        else:
-            results.append(
-                "❌ ResidualBlock output incorrect (should be input + sublayer_output)"
-            )
-
-        # Test apply_residual_connection function
-        func_output = apply_residual_connection(test_residual, test_sublayer)
-        results.append("✅ apply_residual_connection executes without errors")
-
-        func_output_np = np.from_dlpack(func_output.to(CPU()))
-        if np.allclose(func_output_np, expected_output_np, atol=1e-5):
-            results.append("✅ apply_residual_connection correctly adds tensors")
-        else:
-            results.append("❌ apply_residual_connection output incorrect")
+            results.append("❌ Output is all zeros")
 
     except Exception as e:
         results.append(f"❌ Functional test failed: {e}")
@@ -286,9 +301,7 @@ def test_step_10():
             results.append(f"   {error_lines[-1]}")
 
     # Print all results
-    print(
-        "Running tests for Step 10: Residual Connections and Layer Normalization...\n"
-    )
+    print("Running tests for Step 12: Stacking Transformer Blocks...\n")
     print("Results:")
     print("\n".join(results))
 
@@ -305,4 +318,4 @@ def test_step_10():
 
 
 if __name__ == "__main__":
-    test_step_10()
+    test_step_12()

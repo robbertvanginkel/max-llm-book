@@ -1,14 +1,14 @@
-"""Tests for Step 08: Attention Mechanism with Causal Masking"""
+"""Tests for Step 10: Residual Connections and Layer Normalization"""
 
 import ast
 from pathlib import Path
 
 
-def test_step_08():
-    """Comprehensive validation for Step 08 implementation."""
+def test_step_10():
+    """Comprehensive validation for Step 10 implementation."""
 
     results = []
-    step_file = Path("steps/step_08.py")
+    step_file = Path("steps/step_10.py")
 
     # Read source
     if not step_file.exists():
@@ -19,19 +19,12 @@ def test_step_08():
     tree = ast.parse(source)
 
     # Phase 1: Import checks
-    has_math = False
     has_functional = False
     has_tensor = False
-    has_device = False
-    has_dtype = False
-    has_dim = False
     has_dimlike = False
+    has_module = False
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name == "math":
-                    has_math = True
         if isinstance(node, ast.ImportFrom):
             if node.module == "max.experimental":
                 for alias in node.names:
@@ -43,26 +36,14 @@ def test_step_08():
                 for alias in node.names:
                     if alias.name == "Tensor":
                         has_tensor = True
-            if node.module == "max.driver":
-                for alias in node.names:
-                    if alias.name == "Device":
-                        has_device = True
-            if node.module == "max.dtype":
-                for alias in node.names:
-                    if alias.name == "DType":
-                        has_dtype = True
             if node.module == "max.graph":
                 for alias in node.names:
-                    if alias.name == "Dim":
-                        has_dim = True
                     if alias.name == "DimLike":
                         has_dimlike = True
-
-    if has_math:
-        results.append("✅ math is correctly imported")
-    else:
-        results.append("❌ math is not imported")
-        results.append("   Hint: Add 'import math' at the top")
+            if node.module == "max.nn.module_v3":
+                for alias in node.names:
+                    if alias.name == "Module":
+                        has_module = True
 
     if has_functional:
         results.append("✅ functional is correctly imported from max.experimental")
@@ -76,123 +57,103 @@ def test_step_08():
         results.append("❌ Tensor is not imported from max.experimental.tensor")
         results.append("   Hint: Add 'from max.experimental.tensor import Tensor'")
 
-    if has_device:
-        results.append("✅ Device is correctly imported from max.driver")
-    else:
-        results.append("❌ Device is not imported from max.driver")
-        results.append("   Hint: Add 'from max.driver import Device'")
-
-    if has_dtype:
-        results.append("✅ DType is correctly imported from max.dtype")
-    else:
-        results.append("❌ DType is not imported from max.dtype")
-        results.append("   Hint: Add 'from max.dtype import DType'")
-
-    if has_dim:
-        results.append("✅ Dim is correctly imported from max.graph")
-    else:
-        results.append("❌ Dim is not imported from max.graph")
-        results.append("   Hint: Add 'from max.graph import Dim, DimLike'")
-
     if has_dimlike:
         results.append("✅ DimLike is correctly imported from max.graph")
     else:
         results.append("❌ DimLike is not imported from max.graph")
-        results.append("   Hint: Add 'from max.graph import Dim, DimLike'")
+        results.append("   Hint: Add 'from max.graph import DimLike'")
+
+    if has_module:
+        results.append("✅ Module is correctly imported from max.nn.module_v3")
+    else:
+        results.append("❌ Module is not imported from max.nn.module_v3")
+        results.append("   Hint: Add 'from max.nn.module_v3 import Module'")
 
     # Phase 2: Structure checks
     try:
-        from steps.step_08 import causal_mask, compute_attention
+        from steps.step_10 import LayerNorm, ResidualBlock, apply_residual_connection
 
-        results.append("✅ causal_mask function exists")
-        results.append("✅ compute_attention function exists")
+        results.append("✅ LayerNorm class exists")
+        results.append("✅ ResidualBlock class exists")
+        results.append("✅ apply_residual_connection function exists")
     except ImportError as e:
-        if "causal_mask" in str(e):
-            results.append("❌ causal_mask function not found in step_08 module")
-            results.append(
-                "   Hint: Define causal_mask function with @F.functional decorator"
-            )
-        if "compute_attention" in str(e):
-            results.append("❌ compute_attention function not found in step_08 module")
-            results.append("   Hint: Define compute_attention function")
+        if "LayerNorm" in str(e):
+            results.append("❌ LayerNorm class not found in step_10 module")
+            results.append("   Hint: Create class LayerNorm(Module)")
+        if "ResidualBlock" in str(e):
+            results.append("❌ ResidualBlock class not found in step_10 module")
+            results.append("   Hint: Create class ResidualBlock(Module)")
+        if "apply_residual_connection" in str(e):
+            results.append("❌ apply_residual_connection function not found")
+            results.append("   Hint: Define apply_residual_connection function")
         print("\n".join(results))
         return
 
+    # Check inheritance
+    from max.nn.module_v3 import Module
+
+    if issubclass(LayerNorm, Module):
+        results.append("✅ LayerNorm inherits from Module")
+    else:
+        results.append("❌ LayerNorm must inherit from Module")
+
+    if issubclass(ResidualBlock, Module):
+        results.append("✅ ResidualBlock inherits from Module")
+    else:
+        results.append("❌ ResidualBlock must inherit from Module")
+
     # Phase 3: Implementation checks
-    # Check causal_mask implementation
-    if "@F.functional" in source or "@functional" in source:
-        results.append("✅ causal_mask uses @F.functional decorator")
+    # Check LayerNorm
+    if "Tensor.ones" in source:
+        results.append("✅ LayerNorm uses Tensor.ones for weight")
     else:
-        results.append("❌ causal_mask missing @F.functional decorator")
-        results.append("   Hint: Add @F.functional before causal_mask definition")
+        results.append("❌ LayerNorm should use Tensor.ones for weight")
+        results.append("   Hint: self.weight = Tensor.ones([dim])")
 
-    if "Tensor.constant" in source and 'float("-inf")' in source:
-        results.append("✅ causal_mask creates -inf constant correctly")
+    if "Tensor.zeros" in source:
+        results.append("✅ LayerNorm uses Tensor.zeros for bias")
     else:
-        results.append("❌ causal_mask should create Tensor.constant with -inf")
+        results.append("❌ LayerNorm should use Tensor.zeros for bias")
+        results.append("   Hint: self.bias = Tensor.zeros([dim])")
+
+    if "F.layer_norm" in source:
+        results.append("✅ LayerNorm uses F.layer_norm")
+    else:
+        results.append("❌ LayerNorm should use F.layer_norm")
         results.append(
-            '   Hint: mask = Tensor.constant(float("-inf"), dtype=dtype, device=device)'
+            "   Hint: return F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)"
         )
 
-    if "F.broadcast_to" in source:
-        results.append("✅ causal_mask uses F.broadcast_to")
+    if "gamma=self.weight" in source or "gamma = self.weight" in source:
+        results.append("✅ LayerNorm passes weight as gamma parameter")
     else:
-        results.append("❌ causal_mask should use F.broadcast_to")
-        results.append(
-            "   Hint: mask = F.broadcast_to(mask, shape=(sequence_length, n))"
-        )
+        results.append("❌ LayerNorm should pass self.weight as gamma")
+        results.append("   Hint: gamma=self.weight in F.layer_norm call")
 
-    if "F.band_part" in source:
-        results.append("✅ causal_mask uses F.band_part")
+    if "beta=self.bias" in source or "beta = self.bias" in source:
+        results.append("✅ LayerNorm passes bias as beta parameter")
     else:
-        results.append("❌ causal_mask should use F.band_part")
-        results.append(
-            "   Hint: return F.band_part(mask, num_lower=None, num_upper=0, exclude=True)"
-        )
+        results.append("❌ LayerNorm should pass self.bias as beta")
+        results.append("   Hint: beta=self.bias in F.layer_norm call")
 
-    # Check compute_attention implementation
-    if "query @ key.transpose(-1, -2)" in source.replace(
-        " ", ""
-    ) or "query@key.transpose(-1,-2)" in source.replace(" ", ""):
-        results.append("✅ Attention scores computed with Q @ K^T")
-    else:
-        results.append(
-            "❌ Attention scores should be computed with query @ key.transpose(-1, -2)"
-        )
-        results.append("   Hint: attn_weights = query @ key.transpose(-1, -2)")
-
-    if "math.sqrt" in source:
-        results.append("✅ Scaling uses math.sqrt")
-    else:
-        results.append("❌ Attention scores should be scaled by sqrt(d_k)")
-        results.append("   Hint: scale_factor = math.sqrt(int(value.shape[-1]))")
-
-    if (
-        "causal_mask(" in source
-        and "attn_weights +" in source
-        or "attn_weights+" in source
+    # Check ResidualBlock
+    if "self.ln = LayerNorm" in source or (
+        "self.ln =" in source
+        and "None" not in source.split("self.ln =")[1].split("\n")[0]
     ):
-        results.append("✅ Causal mask is applied to attention weights")
+        results.append("✅ ResidualBlock creates LayerNorm instance")
     else:
-        results.append("❌ Causal mask should be applied to attention weights")
-        results.append(
-            "   Hint: mask = causal_mask(...) then attn_weights = attn_weights + mask"
-        )
+        results.append("❌ ResidualBlock should create LayerNorm instance")
+        results.append("   Hint: self.ln = LayerNorm(dim, eps=eps)")
 
-    if "F.softmax" in source:
-        results.append("✅ Softmax is applied to attention weights")
-    else:
-        results.append("❌ F.softmax should be applied to attention weights")
-        results.append("   Hint: attn_weights = F.softmax(attn_weights)")
-
+    # Check residual connections (addition)
     if (
-        source.count("attn_weights @ value") > 0
-        or source.count("attn_weights@value") > 0
-    ):
-        results.append("✅ Weighted sum computed with attention @ value")
+        source.count(" + ") >= 2 or source.count("+") >= 4
+    ):  # At least in ResidualBlock and apply_residual_connection
+        results.append("✅ Residual connections use addition operator")
     else:
-        results.append("❌ Final output should be attn_weights @ value")
-        results.append("   Hint: attn_output = attn_weights @ value")
+        results.append("❌ Residual connections should use + operator")
+        results.append("   Hint: return x + sublayer_output")
 
     # Phase 4: Placeholder detection
     none_lines = [
@@ -220,95 +181,114 @@ def test_step_08():
         from max.experimental.tensor import Tensor
         import numpy as np
 
-        # Test causal_mask
-        seq_len = 4
-        mask = causal_mask(seq_len, 0, dtype=DType.float32, device=CPU())
-        results.append("✅ causal_mask executes without errors")
+        # Test LayerNorm
+        dim = 768
+        ln = LayerNorm(dim, eps=1e-5)
+        results.append("✅ LayerNorm class can be instantiated")
 
-        # Check mask shape
-        expected_shape = (seq_len, seq_len)
-        if mask.shape == expected_shape:
-            results.append(f"✅ causal_mask shape is correct: {expected_shape}")
+        # Check attributes
+        if hasattr(ln, "weight"):
+            results.append("✅ LayerNorm.weight is initialized")
         else:
-            results.append(
-                f"❌ causal_mask shape is incorrect: expected {expected_shape}, got {mask.shape}"
-            )
+            results.append("❌ LayerNorm.weight attribute not found")
 
-        # Check mask values (should be -inf in upper triangle, 0 elsewhere)
-        mask_np = np.from_dlpack(mask.to(CPU()))
-        # Lower triangle and diagonal should be 0
-        lower_triangle_ok = np.all(np.tril(mask_np) == 0)
-        # Upper triangle (excluding diagonal) should be -inf
-        upper_triangle = np.triu(mask_np, k=1)
-        upper_triangle_ok = np.all(np.isinf(upper_triangle)) and np.all(
-            upper_triangle < 0
-        )
-
-        if lower_triangle_ok and upper_triangle_ok:
-            results.append(
-                "✅ causal_mask has correct values (0 for past/present, -inf for future)"
-            )
+        if hasattr(ln, "bias"):
+            results.append("✅ LayerNorm.bias is initialized")
         else:
-            results.append("❌ causal_mask values are incorrect")
-            results.append(f"   Lower triangle all zeros: {lower_triangle_ok}")
-            results.append(f"   Upper triangle all -inf: {upper_triangle_ok}")
+            results.append("❌ LayerNorm.bias attribute not found")
 
-        # Test compute_attention
+        # Test forward pass
         batch_size = 2
-        seq_len = 4
-        d_k = 64
-        d_v = 64
-
-        query = Tensor.randn(
-            batch_size, seq_len, d_k, dtype=DType.float32, device=CPU()
-        )
-        key = Tensor.randn(batch_size, seq_len, d_k, dtype=DType.float32, device=CPU())
-        value = Tensor.randn(
-            batch_size, seq_len, d_v, dtype=DType.float32, device=CPU()
+        seq_length = 8
+        test_input = Tensor.randn(
+            batch_size, seq_length, dim, dtype=DType.float32, device=CPU()
         )
 
-        output = compute_attention(query, key, value)
-        results.append("✅ compute_attention executes without errors")
+        output = ln(test_input)
+        results.append("✅ LayerNorm forward pass executes without errors")
 
         # Check output shape
-        expected_output_shape = (batch_size, seq_len, d_v)
-        if output.shape == expected_output_shape:
-            results.append(
-                f"✅ compute_attention output shape is correct: {expected_output_shape}"
-            )
+        expected_shape = (batch_size, seq_length, dim)
+        if output.shape == expected_shape:
+            results.append(f"✅ LayerNorm output shape is correct: {expected_shape}")
         else:
             results.append(
-                f"❌ Output shape is incorrect: expected {expected_output_shape}, got {output.shape}"
+                f"❌ LayerNorm output shape incorrect: expected {expected_shape}, got {output.shape}"
             )
 
-        # Check output contains non-zero values
+        # Check normalization properties (mean ≈ 0, std ≈ 1)
         output_np = np.from_dlpack(output.to(CPU()))
-        if not np.allclose(output_np, 0):
-            results.append("✅ Output contains non-zero values")
-        else:
-            results.append("❌ Output is all zeros")
+        mean = output_np.mean(axis=-1)
+        std = output_np.std(axis=-1)
 
-        # Check that output is different from input value
-        value_np = np.from_dlpack(value.to(CPU()))
-        if not np.allclose(output_np, value_np):
-            results.append(
-                "✅ Output is different from input value (attention is applied)"
-            )
+        if np.allclose(mean, 0, atol=1e-5):
+            results.append("✅ LayerNorm output has mean ≈ 0 (normalized)")
         else:
-            results.append("⚠️ Warning: Output is identical to input value")
+            results.append(
+                f"⚠️ LayerNorm output mean is {mean.mean():.6f} (expected ≈ 0)"
+            )
+
+        if np.allclose(std, 1, atol=1e-4):
+            results.append("✅ LayerNorm output has std ≈ 1 (normalized)")
+        else:
+            results.append(f"⚠️ LayerNorm output std is {std.mean():.6f} (expected ≈ 1)")
+
+        # Test ResidualBlock
+        rb = ResidualBlock(dim, eps=1e-5)
+        results.append("✅ ResidualBlock class can be instantiated")
+
+        if hasattr(rb, "ln"):
+            results.append("✅ ResidualBlock.ln is initialized")
+        else:
+            results.append("❌ ResidualBlock.ln attribute not found")
+
+        # Test residual connection
+        test_residual = Tensor.randn(
+            batch_size, seq_length, dim, dtype=DType.float32, device=CPU()
+        )
+        test_sublayer = Tensor.randn(
+            batch_size, seq_length, dim, dtype=DType.float32, device=CPU()
+        )
+
+        residual_output = rb(test_residual, test_sublayer)
+        results.append("✅ ResidualBlock forward pass executes without errors")
+
+        # Check that output equals input + sublayer_output
+        expected_output_np = np.from_dlpack(test_residual.to(CPU())) + np.from_dlpack(
+            test_sublayer.to(CPU())
+        )
+        residual_output_np = np.from_dlpack(residual_output.to(CPU()))
+
+        if np.allclose(residual_output_np, expected_output_np, atol=1e-5):
+            results.append("✅ ResidualBlock correctly adds input + sublayer_output")
+        else:
+            results.append(
+                "❌ ResidualBlock output incorrect (should be input + sublayer_output)"
+            )
+
+        # Test apply_residual_connection function
+        func_output = apply_residual_connection(test_residual, test_sublayer)
+        results.append("✅ apply_residual_connection executes without errors")
+
+        func_output_np = np.from_dlpack(func_output.to(CPU()))
+        if np.allclose(func_output_np, expected_output_np, atol=1e-5):
+            results.append("✅ apply_residual_connection correctly adds tensors")
+        else:
+            results.append("❌ apply_residual_connection output incorrect")
 
     except Exception as e:
         results.append(f"❌ Functional test failed: {e}")
         import traceback
 
         tb = traceback.format_exc()
-        # Get last meaningful error line
         error_lines = [line for line in tb.split("\n") if line.strip()]
         if error_lines:
             results.append(f"   {error_lines[-1]}")
 
     # Print all results
-    print("Running tests for Step 08: Attention Mechanism with Causal Masking...\n")
+    print(
+        "Running tests for Step 10: Residual Connections and Layer Normalization...\n"
+    )
     print("Results:")
     print("\n".join(results))
 
@@ -325,4 +305,4 @@ def test_step_08():
 
 
 if __name__ == "__main__":
-    test_step_08()
+    test_step_10()

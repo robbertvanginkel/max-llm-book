@@ -16,17 +16,15 @@
 
 # Attention
 
-- [Query/Key/Value projections](./step_07.md)
-- [Attention mechanism with causal masking](./step_08.md)
-- [Multi-head attention](./step_09.md)
+- [Multi-head attention](./step_07.md)
 
 # Composition
 
-- [Residual connections and layer normalization](./step_10.md)
-- [Transformer block](./step_11.md)
+- [Residual connections and layer normalization](./step_08.md)
+- [Transformer block](./step_09.md)
 
 # Complete model
 
-- [Stacking transformer blocks](./step_12.md)
-- [Language model head](./step_13.md)
-- [Text generation](./step_14.md)
+- [Stacking transformer blocks](./step_10.md)
+- [Language model head](./step_11.md)
+- [Text generation](./step_12.md)

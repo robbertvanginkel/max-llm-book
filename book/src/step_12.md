@@ -1,100 +1,88 @@
-# Step 12: Stacking transformer blocks
+# Step 12: Text generation
 
 <div class="note">
-    Learn to stack 12 transformer blocks with embeddings and final normalization to create the complete GPT-2 model.
+    Learn to implement autoregressive text generation with sampling and temperature control.
 </div>
 
-## What is model stacking?
+## Generating text
 
-In this section you will create the `GPT2Model` class that stacks 12 transformer blocks with embeddings to form the complete GPT-2 architecture.
+In this final step, you'll implement the generation loop that produces text one token at a time. The model predicts the next token, appends it to the sequence, and repeats until reaching the desired length.
 
-The flow:
-1. Token IDs → token embeddings (lookup table)
-2. Add position embeddings
-3. Pass through 12 transformer blocks in sequence
-4. Apply final layer normalization
-5. Output: contextualized representations for each token
+Start with a prompt like "Hello world" (tokens `[15496, 995]`). The model predicts the next token, giving you `[15496, 995, 318]` ("Hello world is"). It predicts again, producing `[15496, 995, 318, 257]` ("Hello world is a"). This process continues, with each prediction feeding back as input for the next.
 
-Each block processes the output of the previous block, progressively refining the representations from simple embeddings to rich contextual understanding.
+You'll implement two generation strategies: greedy decoding (always pick the highest-scoring token) and sampling (randomly choose according to probabilities). You'll also add temperature control to adjust how random or focused the generation is.
 
-This stacking creates a hierarchy of representations. Early blocks might learn simple patterns like word associations, middle blocks capture syntactic structure, and later blocks encode high-level semantic and pragmatic information. The depth (12 layers) is crucial—shallow networks cannot capture the complexity of natural language.
+## Understanding the generation loop
 
-## Why stack 12 blocks?
+The generation loop is simple: run the model, extract the next token prediction, append it to the sequence, repeat. Each iteration requires a full forward pass through all 12 transformer blocks.
 
-**1. Hierarchical Representation Learning**: Each transformer block learns features at a different level of abstraction. Research analyzing GPT models shows that early layers capture surface-level patterns (e.g., "the" is often followed by a noun), middle layers learn syntactic structures (e.g., subject-verb agreement across long distances), and deep layers encode semantic relationships and world knowledge. This hierarchy emerges from training, not explicit design—the model learns to use depth for abstraction.
+The model outputs logits with shape `[batch, seq_length, vocab_size]`. Since you only care about predicting the next token, extract the last position: `logits[0, -1, :]`. This gives you a vector of 50,257 scores, one per vocabulary token.
 
-**2. Increased Model Capacity**: More layers mean more parameters to learn. GPT-2 base with 12 layers has ~117M parameters. Doubling layers roughly doubles parameters, allowing the model to memorize more patterns and generalize better. However, depth provides capacity more efficiently than width—a 12-layer model with 768 dimensions outperforms a 6-layer model with 1536 dimensions despite similar parameter counts, because depth enables hierarchical feature learning.
+These scores are logits (unnormalized), not probabilities. To convert them to probabilities, apply softmax. Then you can either pick the highest-probability token (greedy) or sample from the distribution (random).
 
-**3. Long-Range Dependencies**: Each attention layer has a finite receptive field determined by sequence length, but stacking layers increases the effective receptive field. Information can propagate across the entire sequence through multiple layers. A token at position 0 can influence position 100 through a chain of attention connections across 12 layers. This multi-hop reasoning is essential for understanding long documents.
+## Understanding temperature control
 
-**4. Residual Gradient Flow**: With residual connections in each block, gradients can flow through many paths—some skipping blocks, others passing through them. This creates an implicit ensemble of networks of varying depths. During training, the model can learn to use different depth paths for different patterns, improving robustness and trainability.
+Temperature scaling adjusts how random the generation is using the formula `scaled_logits = logits / temperature`.
 
-### Key concepts
+With temperature 1.0, you use the original distribution. With temperature 0.7, you sharpen the distribution, and high-probability tokens become even more likely, making generation more focused and deterministic. With temperature 1.2, you flatten the distribution, and lower-probability tokens get more chances, making generation more diverse and creative.
 
-**Sequential Composition**:
-- [`Sequential(*modules)`](https://docs.modular.com/max/api/python/nn/module_v3#max.nn.module_v3.Sequential) chains modules
-- Applies each module in order: `output = module_n(...module_2(module_1(input)))`
-- For GPT-2: `Sequential(block1, block2, ..., block12)`
-- Convenient for stacking identical structures
+Temperature is applied before softmax. Dividing by a value less than 1 makes large logits even larger (sharpening), while dividing by a value greater than 1 reduces the differences between logits (flattening).
 
-**Embedding Combination**:
-- Token embeddings: `wte(input_ids)` maps each token ID to 768-dim vector
-- Position embeddings: `wpe(positions)` maps each position to 768-dim vector
-- Combined: `tok_embeds + pos_embeds` (element-wise addition)
-- Both contribute to initial representation
+## Understanding sampling vs greedy
 
-**Position Encoding**:
-- Create positions: `Tensor.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device)`
-- Must match input dtype and device for compatibility
-- Positions are [0, 1, 2, ..., seq_length-1]
-- Same positions used for all examples in batch (broadcast)
+Greedy decoding always picks the highest-probability token using [`F.argmax`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.argmax). It's fast, deterministic, and simple, but often produces repetitive text because the model keeps choosing the safest option.
 
-**Final Layer Normalization**:
-- Applied after all transformer blocks
-- Stabilizes the output distribution
-- Called `ln_f` (layer norm final) in HuggingFace
-- Essential for consistent output scale
+Sampling randomly selects tokens according to their probabilities. Convert logits to probabilities with `F.softmax`, transfer to CPU, convert to NumPy with `np.from_dlpack`, then sample with `np.random.choice`. You use NumPy because MAX doesn't have built-in sampling yet.
 
-**Model Hyperparameters**:
-- `config.n_layer = 12`: Number of transformer blocks
-- `config.n_embd = 768`: Embedding/hidden dimension
-- `config.vocab_size = 50257`: Vocabulary size
-- `config.n_positions = 1024`: Maximum sequence length
+Most practical generation uses sampling with temperature control. This balances creativity with coherence, as the model can explore different possibilities while still favoring high-quality continuations.
 
-### Implementation tasks (`step_12.py`)
+<div class="note">
+<div class="title">MAX operations</div>
 
-1. **Import Required Modules** (Lines 13-18):
-   - Import `Tensor` from `max.experimental.tensor`
-   - Import `Embedding, Module, Sequential` from `max.nn.module_v3`
-   - Import `GPT2Config` from `solutions.solution_01`
-   - Import `LayerNorm` from `solutions.solution_10`
-   - Import `GPT2Block` from `solutions.solution_11`
+You'll use the following MAX operations to complete this task:
 
-2. **Create Embeddings** (Lines 34-39):
-   - Token embeddings: `Embedding(config.vocab_size, dim=config.n_embd)`
-   - Position embeddings: `Embedding(config.n_positions, dim=config.n_embd)`
-   - Store as `self.wte` and `self.wpe`
+**Probability operations**:
+- [`F.softmax(logits)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.softmax): Converts logits to probabilities
+- [`F.argmax(logits)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.argmax): Selects highest-probability token (greedy)
 
-3. **Stack Transformer Blocks** (Lines 42-44):
-   - Use `Sequential(*(GPT2Block(config) for _ in range(config.n_layer)))`
-   - Generator creates 12 identical blocks
-   - Sequential chains them together
+**Sequence building**:
+- [`F.concat([seq, new_token], axis=1)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.concat): Appends token to sequence
+- [`Tensor.constant(value, dtype, device)`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.constant): Creates scalar tensors
 
-4. **Create Final Layer Norm** (Lines 47-48):
-   - `LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)`
-   - Store as `self.ln_f`
+**NumPy interop**:
+- `probs.to(CPU())`: Transfers tensor to CPU
+- `np.from_dlpack(probs)`: Converts MAX tensor to NumPy for sampling
 
-5. **Implement Forward Pass** (Lines 61-87):
-   - Extract shape: `batch_size, seq_length = input_ids.shape`
-   - Token embeddings: `tok_embeds = self.wte(input_ids)`
-   - Position indices: `Tensor.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device)`
-   - Position embeddings: `pos_embeds = self.wpe(position_indices)`
-   - Combine: `x = tok_embeds + pos_embeds`
-   - Apply blocks: `x = self.h(x)`
-   - Final norm: `x = self.ln_f(x)`
-   - Return `x`
+</div>
 
-**Implementation**:
+## Implementing text generation
+
+You'll create two functions: `generate_next_token` that predicts a single token, and `generate` that loops to produce full sequences.
+
+First, import the required modules. You'll need `numpy` for sampling, `CPU` from MAX's driver, `DType` for type constants, `functional as F` for operations like softmax and argmax, and `Tensor` for creating tensors.
+
+In `generate_next_token`, implement the prediction logic:
+
+1. Run the model to get logits: `logits = model(input_ids)`
+2. Extract the last position (next token prediction): `next_token_logits = logits[0, -1, :]`
+3. If using temperature, scale the logits by dividing by the temperature tensor
+4. For sampling: convert to probabilities with `F.softmax`, transfer to CPU, convert to NumPy with `np.from_dlpack`, sample with `np.random.choice`, then convert back to a MAX tensor
+5. For greedy: use `F.argmax` to select the highest-scoring token
+
+The temperature must be a tensor with the same dtype and device as the logits. Create it with `Tensor.constant(temperature, dtype=..., device=...)`.
+
+In `generate`, implement the generation loop:
+
+1. Initialize with the input: `generated_tokens = input_ids`
+2. Loop `max_new_tokens` times
+3. Generate the next token: `next_token = generate_next_token(model, generated_tokens, ...)`
+4. Reshape to 2D: `next_token_2d = next_token.reshape([1, -1])`
+5. Concatenate to the sequence: `generated_tokens = F.concat([generated_tokens, next_token_2d], axis=1)`
+6. Return the complete sequence
+
+The reshape is necessary because `concat` requires matching dimensions, and the generated token is 0D (scalar).
+
+**Implementation** (`step_12.py`):
 
 ```python
 {{#include ../../steps/step_12.py}}
@@ -102,10 +90,32 @@ This stacking creates a hierarchy of representations. Early blocks might learn s
 
 ### Validation
 
-Run `pixi run s12`
+Run `pixi run s12` to verify your implementation.
 
-**Reference**: `solutions/solution_12.py`
+<details>
+<summary>Show solution</summary>
 
----
+```python
+{{#include ../../solutions/solution_12.py}}
+```
 
-**Next**: In [Step 13](./step_13.md), you'll add the language modeling head that projects hidden states back to vocabulary logits for text generation.
+</details>
+
+## What you've built
+
+You've completed all 12 steps and built a complete GPT-2 model from scratch
+using MAX. You now have a working implementation of:
+
+**Core components**:
+
+- Model configuration and architecture definition
+- Causal masking for autoregressive generation
+- Layer normalization for training stability
+- Feed-forward networks with GELU activation
+- Token and position embeddings
+- Multi-head self-attention
+- Residual connections and transformer blocks
+- Language model head for next-token prediction
+- Text generation with temperature and sampling
+
+Your model loads OpenAI's pretrained GPT-2 weights and generates text. You understand how every component works, from the low-level tensor operations to the high-level architecture decisions. This knowledge transfers directly to other transformer models like BERT, GPT-3, and beyond.

@@ -1,101 +1,88 @@
 """
-Step 10: Residual Connections and Layer Normalization
+Step 12: Stacking Transformer Blocks
 
-Implement layer normalization and residual connections, which enable
-training deep transformer networks by stabilizing gradients.
+Stack multiple transformer blocks with embeddings to create
+the complete GPT-2 model architecture.
 
 Tasks:
-1. Import F (functional), Tensor, DimLike, and Module
-2. Create LayerNorm class with learnable weight and bias parameters
-3. Implement layer norm using F.layer_norm
-4. Implement residual connection (simple addition)
+1. Import Tensor, Embedding, Module, Sequential, and previous components
+2. Create token and position embeddings
+3. Stack n_layer transformer blocks using Sequential
+4. Create final layer normalization
+5. Implement forward pass: embeddings -> blocks -> layer norm
 
-Run: pixi run s10
+Run: pixi run s12
 """
 
 # TODO: Import required modules
-# Hint: You'll need F from max.experimental
 # Hint: You'll need Tensor from max.experimental.tensor
-# Hint: You'll need DimLike from max.graph
-# Hint: You'll need Module from max.nn.module_v3
+# Hint: You'll need Embedding, Module, Sequential from max.nn.module_v3
+# Hint: Import GPT2Config from solutions.solution_01
+# Hint: Import LayerNorm from solutions.solution_10
+# Hint: Import GPT2Block from solutions.solution_11
 
 
-class LayerNorm(Module):
-    """Layer normalization module matching HuggingFace GPT-2."""
+class GPT2Model(Module):
+    """Complete GPT-2 transformer model."""
 
-    def __init__(self, dim: DimLike, *, eps: float = 1e-5):
-        """Initialize layer normalization.
-
-        Args:
-            dim: Dimension to normalize (embedding dimension)
-            eps: Small epsilon for numerical stability
-        """
-        super().__init__()
-        self.eps = eps
-
-        # TODO: Create learnable scale parameter (weight)
-        # Hint: Use Tensor.ones([dim])
-        self.weight = None  # Line 33-34
-
-        # TODO: Create learnable shift parameter (bias)
-        # Hint: Use Tensor.zeros([dim])
-        self.bias = None  # Line 37-38
-
-    def __call__(self, x: Tensor) -> Tensor:
-        """Apply layer normalization.
+    def __init__(self, config: GPT2Config):
+        """Initialize GPT-2 model.
 
         Args:
-            x: Input tensor, shape [..., dim]
-
-        Returns:
-            Normalized tensor, same shape as input
-        """
-        # TODO: Apply layer normalization
-        # Hint: Use F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)
-        return None  # Line 50-51
-
-
-class ResidualBlock(Module):
-    """Demonstrates residual connections with layer normalization."""
-
-    def __init__(self, dim: int, eps: float = 1e-5):
-        """Initialize residual block.
-
-        Args:
-            dim: Dimension of the input/output
-            eps: Epsilon for layer normalization
+            config: GPT2Config containing model hyperparameters
         """
         super().__init__()
 
-        # TODO: Create layer normalization
-        # Hint: Use LayerNorm(dim, eps=eps)
-        self.ln = None  # Line 68-69
+        # TODO: Create token embeddings
+        # Hint: Use Embedding(config.vocab_size, dim=config.n_embd)
+        self.wte = None  # Line 34-35
 
-    def __call__(self, x: Tensor, sublayer_output: Tensor) -> Tensor:
-        """Apply residual connection.
+        # TODO: Create position embeddings
+        # Hint: Use Embedding(config.n_positions, dim=config.n_embd)
+        self.wpe = None  # Line 38-39
+
+        # TODO: Stack transformer blocks
+        # Hint: Use Sequential(*(GPT2Block(config) for _ in range(config.n_layer)))
+        # This creates config.n_layer blocks (12 for GPT-2 base)
+        self.h = None  # Line 42-44
+
+        # TODO: Create final layer normalization
+        # Hint: Use LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
+        self.ln_f = None  # Line 47-48
+
+    def __call__(self, input_ids):
+        """Forward pass through the transformer.
 
         Args:
-            x: Input tensor (the residual)
-            sublayer_output: Output from sublayer applied to ln(x)
+            input_ids: Token IDs, shape [batch, seq_length]
 
         Returns:
-            x + sublayer_output
+            Hidden states, shape [batch, seq_length, n_embd]
         """
-        # TODO: Add input and sublayer output (residual connection)
-        # Hint: return x + sublayer_output
-        return None  # Line 83-84
+        # TODO: Get batch size and sequence length
+        # Hint: batch_size, seq_length = input_ids.shape
+        pass  # Line 61-62
 
+        # TODO: Get token embeddings
+        # Hint: tok_embeds = self.wte(input_ids)
+        pass  # Line 65-66
 
-def apply_residual_connection(input_tensor: Tensor, sublayer_output: Tensor) -> Tensor:
-    """Apply a residual connection by adding input to sublayer output.
+        # TODO: Get position embeddings
+        # Hint: Create position indices with Tensor.arange(seq_length, dtype=input_ids.dtype, device=input_ids.device)
+        # Hint: pos_embeds = self.wpe(position_indices)
+        pass  # Line 69-72
 
-    Args:
-        input_tensor: Original input (the residual)
-        sublayer_output: Output from a sublayer (attention, MLP, etc.)
+        # TODO: Combine embeddings
+        # Hint: x = tok_embeds + pos_embeds
+        pass  # Line 75-76
 
-    Returns:
-        input_tensor + sublayer_output
-    """
-    # TODO: Add the two tensors
-    # Hint: return input_tensor + sublayer_output
-    return None  # Line 97-98
+        # TODO: Apply transformer blocks
+        # Hint: x = self.h(x)
+        pass  # Line 79-80
+
+        # TODO: Apply final layer norm
+        # Hint: x = self.ln_f(x)
+        pass  # Line 83-84
+
+        # TODO: Return the output
+        return None  # Line 87

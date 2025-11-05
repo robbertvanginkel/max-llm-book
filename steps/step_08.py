@@ -1,89 +1,101 @@
 """
-Step 08: Attention Mechanism with Causal Masking
+Step 10: Residual Connections and Layer Normalization
 
-Implement the core attention mechanism with scaled dot-product attention.
+Implement layer normalization and residual connections, which enable
+training deep transformer networks by stabilizing gradients.
 
 Tasks:
-1. Import math (for sqrt), F (functional), Tensor, Device, DType, Dim, DimLike
-2. Implement causal_mask function using F.band_part
-3. Compute attention scores (Q @ K^T)
-4. Scale scores by sqrt(d_k)
-5. Apply causal mask and softmax
-6. Compute weighted sum of values
+1. Import F (functional), Tensor, DimLike, and Module
+2. Create LayerNorm class with learnable weight and bias parameters
+3. Implement layer norm using F.layer_norm
+4. Implement residual connection (simple addition)
 
-Run: pixi run s08
+Run: pixi run s10
 """
 
 # TODO: Import required modules
-# Hint: You'll need math for sqrt
-# Hint: You'll need F (functional) from max.experimental
+# Hint: You'll need F from max.experimental
 # Hint: You'll need Tensor from max.experimental.tensor
-# Hint: You'll need Device, DType from max.driver and max.dtype
-# Hint: You'll need Dim, DimLike from max.graph
+# Hint: You'll need DimLike from max.graph
+# Hint: You'll need Module from max.nn.module_v3
 
 
-# TODO: Implement causal_mask function
-# Hint: Use @F.functional decorator
-# Hint: Parameters: sequence_length, num_tokens, *, dtype, device
-# Hint: Create -inf constant, broadcast, and use F.band_part
-@F.functional
-def causal_mask(
-    sequence_length: DimLike,
-    num_tokens: DimLike,
-    *,
-    dtype: DType,
-    device: Device,
-):
-    """Create a causal attention mask.
+class LayerNorm(Module):
+    """Layer normalization module matching HuggingFace GPT-2."""
+
+    def __init__(self, dim: DimLike, *, eps: float = 1e-5):
+        """Initialize layer normalization.
+
+        Args:
+            dim: Dimension to normalize (embedding dimension)
+            eps: Small epsilon for numerical stability
+        """
+        super().__init__()
+        self.eps = eps
+
+        # TODO: Create learnable scale parameter (weight)
+        # Hint: Use Tensor.ones([dim])
+        self.weight = None  # Line 33-34
+
+        # TODO: Create learnable shift parameter (bias)
+        # Hint: Use Tensor.zeros([dim])
+        self.bias = None  # Line 37-38
+
+    def __call__(self, x: Tensor) -> Tensor:
+        """Apply layer normalization.
+
+        Args:
+            x: Input tensor, shape [..., dim]
+
+        Returns:
+            Normalized tensor, same shape as input
+        """
+        # TODO: Apply layer normalization
+        # Hint: Use F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)
+        return None  # Line 50-51
+
+
+class ResidualBlock(Module):
+    """Demonstrates residual connections with layer normalization."""
+
+    def __init__(self, dim: int, eps: float = 1e-5):
+        """Initialize residual block.
+
+        Args:
+            dim: Dimension of the input/output
+            eps: Epsilon for layer normalization
+        """
+        super().__init__()
+
+        # TODO: Create layer normalization
+        # Hint: Use LayerNorm(dim, eps=eps)
+        self.ln = None  # Line 68-69
+
+    def __call__(self, x: Tensor, sublayer_output: Tensor) -> Tensor:
+        """Apply residual connection.
+
+        Args:
+            x: Input tensor (the residual)
+            sublayer_output: Output from sublayer applied to ln(x)
+
+        Returns:
+            x + sublayer_output
+        """
+        # TODO: Add input and sublayer output (residual connection)
+        # Hint: return x + sublayer_output
+        return None  # Line 83-84
+
+
+def apply_residual_connection(input_tensor: Tensor, sublayer_output: Tensor) -> Tensor:
+    """Apply a residual connection by adding input to sublayer output.
 
     Args:
-        sequence_length: Length of the sequence
-        num_tokens: Number of new tokens (usually 0)
-        dtype: Data type of the mask
-        device: Device to create the mask on
+        input_tensor: Original input (the residual)
+        sublayer_output: Output from a sublayer (attention, MLP, etc.)
 
     Returns:
-        Causal mask with -inf for future positions
+        input_tensor + sublayer_output
     """
-    # TODO: Create the mask
-    # Hint: n = Dim(sequence_length) + num_tokens
-    # Hint: mask = Tensor.constant(float("-inf"), dtype=dtype, device=device)
-    # Hint: mask = F.broadcast_to(mask, shape=(sequence_length, n))
-    # Hint: return F.band_part(mask, num_lower=None, num_upper=0, exclude=True)
-    return None  # Line 46-51
-
-
-def compute_attention(query, key, value):
-    """Compute scaled dot-product attention with causal masking.
-
-    Args:
-        query: Query tensor, shape [..., seq_length, d_k]
-        key: Key tensor, shape [..., seq_length, d_k]
-        value: Value tensor, shape [..., seq_length, d_v]
-
-    Returns:
-        Attention output, shape [..., seq_length, d_v]
-    """
-    # TODO: Step 1 - Compute attention scores (Q @ K^T)
-    # Hint: Use query @ key.transpose(-1, -2)
-    attn_weights = None  # Line 68-69
-
-    # TODO: Step 2 - Scale by sqrt(d_k)
-    # Hint: scale_factor = math.sqrt(int(value.shape[-1]))
-    # Hint: attn_weights = attn_weights / scale_factor
-    pass  # Line 72-74
-
-    # TODO: Step 3 - Apply causal mask
-    # Hint: seq_len = query.shape[-2]
-    # Hint: mask = causal_mask(seq_len, 0, dtype=query.dtype, device=query.device)
-    # Hint: attn_weights = attn_weights + mask
-    pass  # Line 77-80
-
-    # TODO: Step 4 - Apply softmax
-    # Hint: attn_weights = F.softmax(attn_weights)
-    pass  # Line 83-84
-
-    # TODO: Step 5 - Weighted sum of values
-    # Hint: attn_output = attn_weights @ value
-    # Hint: return attn_output
-    return None  # Line 87-89
+    # TODO: Add the two tensors
+    # Hint: return input_tensor + sublayer_output
+    return None  # Line 97-98

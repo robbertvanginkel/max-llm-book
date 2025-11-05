@@ -1,107 +1,74 @@
-# Step 08: Attention mechanism with causal masking
+# Step 08: Residual connections and layer normalization
 
 <div class="note">
-    Learn to implement the core attention mechanism using scaled dot-product attention with causal masking.
+    Learn to implement residual connections and layer normalization to enable training deep transformer networks.
 </div>
 
-## What is the attention mechanism?
+## Building the residual pattern
 
-In this section you will implement the attention mechanism. Given query, key, and value tensors (from Step 07), attention computes how much each position should "pay attention to" other positions, then creates weighted combinations of values.
+In this step, you'll combine residual connections and layer normalization into a reusable pattern for transformer blocks. Residual connections add the input directly to the output using `output = input + layer(input)`, creating shortcuts that let gradients flow through deep networks. You'll implement this alongside the layer normalization from Step 03.
 
-The process:
-1. Compute similarity scores: Q @ K^T (dot product of queries and keys)
-2. Scale by sqrt(d_k) to prevent large values
-3. Apply causal mask to block future tokens
-4. Apply softmax to convert scores to probabilities
-5. Multiply probabilities by values to get the output
+GPT-2 uses pre-norm architecture where layer norm is applied before each sublayer (attention or MLP). The pattern is `x = x + sublayer(layer_norm(x))`: normalize first, process, then add the original input back. This is more stable than post-norm alternatives for deep networks.
 
-This creates context-aware representations where each token incorporates information from relevant previous tokens.
+Residual connections solve the vanishing gradient problem. During backpropagation, gradients flow through the identity path (`x = x + ...`) without being multiplied by layer weights. This allows training networks with 12+ layers. Without residuals, gradients would diminish exponentially as they propagate through many layers.
 
-## Why use causal masking?
+Layer normalization works identically during training and inference because it normalizes each example independently. No batch statistics, no running averages, just consistent normalization that keeps activation distributions stable throughout training.
 
-**1. Autoregressive Generation**: Language models generate text one token at a time, left-to-right. During generation, token N cannot see tokens N+1, N+2, etc. because they don't exist yet. Causal masking enforces this constraint during training, ensuring the model learns to generate each token using only previous context. Without causal masking, the model would "cheat" during training by looking at future tokens, then fail at generation time when those tokens aren't available.
+## Understanding the pattern
 
-**2. Training-Inference Consistency**: Training with causal masking ensures the model sees the same information during training as it will during generation. If the model trained with access to future tokens, it would learn to rely on that information. At generation time, this information isn't available, causing a train-test mismatch that degrades performance. Causal masking eliminates this mismatch.
+The pre-norm residual pattern combines three operations in sequence:
 
-**3. Parallel Training**: Without masking, you'd need to process each token sequentially to prevent information leakage from future tokens. Causal masking allows parallel processing of the entire sequence during training—all positions are computed simultaneously, with the mask preventing future information flow. This dramatically speeds up training while maintaining autoregressive properties.
+**Layer normalization**: Normalize the input with `F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)`. This uses learnable weight (gamma) and bias (beta) parameters to scale and shift the normalized values. You already implemented this in Step 03.
 
-**4. Mathematical Foundation**: The mask works by adding -∞ to attention scores for future positions. When softmax is applied, e^(-∞) = 0, so future positions get zero attention weight. This is mathematically clean and differentiable, allowing gradients to flow properly during backpropagation. The model learns which past tokens are relevant without ever seeing the future.
+**Sublayer processing**: Pass the normalized input through a sublayer (attention or MLP). The sublayer transforms the data while the layer norm keeps its input well-conditioned.
 
-### Key concepts
+**Residual addition**: Add the original input back to the sublayer output using simple element-wise addition: `x + sublayer_output`. Both tensors must have identical shapes `[batch, seq_length, embed_dim]`.
 
-**Scaled Dot-Product Attention**:
-- Compute similarity: `query @ key.transpose(-1, -2)` produces shape `[..., seq_length, seq_length]`
-- Scale by `sqrt(d_k)` to prevent large values that saturate softmax
-- Without scaling, large d_k leads to large dot products → extreme softmax values → vanishing gradients
-- Mathematical formula:
+The complete pattern is `x = x + sublayer(layer_norm(x))`. This differs from post-norm `x = layer_norm(x + sublayer(x))`, as pre-norm is more stable because normalization happens before potentially unstable sublayer operations.
 
-$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+<div class="note">
+<div class="title">MAX operations</div>
 
-where $Q$ is the query matrix, $K$ is the key matrix, $V$ is the value matrix, and $d_k$ is the dimension of the keys.
+You'll use the following MAX operations to complete this task:
 
-**Causal Mask Implementation**:
-- Uses [`F.band_part(mask, num_lower=None, num_upper=0, exclude=True)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.band_part)
-- `num_lower=None` keeps all lower diagonal elements (past tokens)
-- `num_upper=0` with `exclude=True` masks upper diagonal elements (future tokens)
-- Creates upper-triangular matrix of -∞ values
-- Shape: `[seq_length, seq_length]`
+**Layer normalization**:
+- [`F.layer_norm(x, gamma, beta, epsilon)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.layer_norm): Normalizes across feature dimension
 
-**Mask Application**:
-- Add mask to attention scores: `attn_weights + mask`
-- Masked positions (future) have score = original_score + (-∞) = -∞
-- Unmasked positions (past/present) have score = original_score + 0 = original_score
-- After softmax: masked positions contribute 0 to the weighted sum
+**Tensor initialization**:
+- [`Tensor.ones([dim])`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.ones): Creates weight parameter
+- [`Tensor.zeros([dim])`](https://docs.modular.com/max/api/python/experimental/tensor#max.experimental.tensor.Tensor.zeros): Creates bias parameter
 
-**Softmax Normalization**:
-- [`F.softmax(attn_weights)`](https://docs.modular.com/max/api/python/experimental/functional#max.experimental.functional.softmax) converts scores to probabilities
-- Probabilities sum to 1 across each query position
-- Applied to the last dimension (across all keys for each query)
-- Produces attention weights in range [0, 1]
+</div>
 
-**Attention Output**:
-- Weighted sum: `attn_weights @ value`
-- Each position's output is a weighted combination of all value vectors
-- High attention weights mean more influence from those positions
-- Shape preserved: `[batch, seq_length, d_v]`
+## Implementing the pattern
 
-### Implementation tasks (`step_08.py`)
+You'll implement three classes that demonstrate the residual pattern: `LayerNorm` for normalization, `ResidualBlock` that combines norm and residual addition, and a standalone `apply_residual_connection` function.
 
-1. **Import Required Modules** (Lines 13-19):
-   - Import `math` for `sqrt` function
-   - Import `functional as F` from `max.experimental`
-   - Import `Tensor` from `max.experimental.tensor`
-   - Import `Device` from `max.driver`
-   - Import `DType` from `max.dtype`
-   - Import `Dim, DimLike` from `max.graph`
+First, import the required modules. You'll need `functional as F` for layer norm, `Tensor` for parameters, `DimLike` for type hints, and `Module` as the base class.
 
-2. **Implement causal_mask Function** (Lines 46-51):
-   - Use `@F.functional` decorator
-   - Calculate total length: `n = Dim(sequence_length) + num_tokens`
-   - Create -∞ constant: `Tensor.constant(float("-inf"), dtype=dtype, device=device)`
-   - Broadcast to shape: `F.broadcast_to(mask, shape=(sequence_length, n))`
-   - Return upper triangle as -∞: `F.band_part(mask, num_lower=None, num_upper=0, exclude=True)`
+**LayerNorm implementation**:
 
-3. **Compute Attention Scores** (Lines 68-69):
-   - Multiply query and transposed key: `query @ key.transpose(-1, -2)`
-   - This gives similarity scores between all query-key pairs
-   - Shape: `[..., seq_length, seq_length]`
+In `__init__`, create the learnable parameters:
+- Weight: `Tensor.ones([dim])` stored as `self.weight`
+- Bias: `Tensor.zeros([dim])` stored as `self.bias`
+- Store `eps` for numerical stability
 
-4. **Scale Scores** (Lines 72-74):
-   - Calculate scale factor: `math.sqrt(int(value.shape[-1]))`
-   - Divide attention weights: `attn_weights / scale_factor`
-   - Prevents softmax saturation with large embedding dimensions
+In `forward`, apply normalization with `F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)`. Returns a normalized tensor with the same shape as input.
 
-5. **Apply Causal Mask** (Lines 77-80):
-   - Get sequence length: `seq_len = query.shape[-2]`
-   - Create mask: `causal_mask(seq_len, 0, dtype=query.dtype, device=query.device)`
-   - Add mask to scores: `attn_weights + mask` (-∞ for future positions)
+**ResidualBlock implementation**:
 
-6. **Apply Softmax and Compute Output** (Lines 83-89):
-   - Normalize to probabilities: `F.softmax(attn_weights)`
-   - Weighted sum of values: `attn_weights @ value`
-   - Return the attention output
+In `__init__`, create a `LayerNorm` instance: `self.ln = LayerNorm(dim, eps=eps)`. This will normalize inputs before sublayers.
 
-**Implementation**:
+In `forward`, implement the pre-norm pattern:
+1. Normalize: `normalized = self.ln(x)`
+2. Process: `sublayer_output = sublayer(normalized)`
+3. Add residual: `return x + sublayer_output`
+
+**Standalone function**:
+
+Implement `apply_residual_connection(input_tensor, sublayer_output)` that returns `input_tensor + sublayer_output`. This demonstrates the residual pattern as a simple function.
+
+**Implementation** (`step_08.py`):
 
 ```python
 {{#include ../../steps/step_08.py}}
@@ -109,10 +76,15 @@ where $Q$ is the query matrix, $K$ is the key matrix, $V$ is the value matrix, a
 
 ### Validation
 
-Run `pixi run s08`
+Run `pixi run s08` to verify your implementation.
 
-**Reference**: `solutions/solution_08.py`
+<details>
+<summary>Show solution</summary>
 
----
+```python
+{{#include ../../solutions/solution_08.py}}
+```
 
-**Next**: In [Step 09](./step_09.md), you'll extend this single-head attention to multi-head attention, allowing the model to attend to different representation subspaces simultaneously.
+</details>
+
+**Next**: In [Step 09](./step_09.md), you'll combine multi-head attention, MLP, layer norm, and residual connections into a complete transformer block.

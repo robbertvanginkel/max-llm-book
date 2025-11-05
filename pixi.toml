@@ -23,15 +23,12 @@ s09 = "python tests/test.step_09.py"
 s10 = "python tests/test.step_10.py"
 s11 = "python tests/test.step_11.py"
 s12 = "python tests/test.step_12.py"
-s13 = "python tests/test.step_13.py"
-s14 = "python tests/test.step_14.py"
 
 # Run all tests
-test-all = "python tests/test.step_01.py && python tests/test.step_02.py && python tests/test.step_03.py && python tests/test.step_04.py && python tests/test.step_05.py && python tests/test.step_06.py && python tests/test.step_07.py && python tests/test.step_08.py && python tests/test.step_09.py && python tests/test.step_10.py && python tests/test.step_11.py && python tests/test.step_12.py && python tests/test.step_13.py && python tests/test.step_14.py"
+test-all = "python tests/test.step_01.py && python tests/test.step_02.py && python tests/test.step_03.py && python tests/test.step_04.py && python tests/test.step_05.py && python tests/test.step_06.py && python tests/test.step_07.py && python tests/test.step_08.py && python tests/test.step_09.py && python tests/test.step_10.py && python tests/test.step_11.py && python tests/test.step_12.py"
 
 # Format python
 fmt = "ruff format ."
-fmt-docs = "blacken-docs book/src/*"
 
 [dependencies]
 modular = "25.7.*"
@@ -40,4 +37,3 @@ pytorch = ">=2.8.0,<3"
 numpy = ">=2.3.3,<3"
 mdbook = ">=0.4.0"
 ruff = ">=0.14.1,<0.15"
-blacken-docs = ">=1.20.0,<2"

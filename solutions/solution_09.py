@@ -1,153 +1,70 @@
 """
-Solution for Step 09: Multi-head Attention
+Solution for Step 11: Transformer Block
 
-This module implements multi-head attention, which allows the model to jointly
-attend to information from different representation subspaces at different positions.
+This module implements a complete GPT-2 transformer block, combining
+multi-head attention, MLP, layer normalization, and residual connections.
 """
 
-import math
-
-from max.driver import Device
-from max.dtype import DType
-from max.experimental import functional as F
-from max.experimental.tensor import Tensor
-from max.graph import Dim, DimLike
-from max.nn.module_v3 import Linear, Module
+from max.nn.module_v3 import Module
 
 from solutions.solution_01 import GPT2Config
+from solutions.solution_04 import GPT2MLP
+from solutions.solution_09 import GPT2MultiHeadAttention
+from solutions.solution_10 import LayerNorm
 
 
-@F.functional
-def causal_mask(
-    sequence_length: DimLike,
-    num_tokens: DimLike,
-    *,
-    dtype: DType,
-    device: Device,
-):
-    """Create a causal attention mask."""
-    n = Dim(sequence_length) + num_tokens
-    mask = Tensor.constant(float("-inf"), dtype=dtype, device=device)
-    mask = F.broadcast_to(mask, shape=(sequence_length, n))
-    return F.band_part(mask, num_lower=None, num_upper=0, exclude=True)
+class GPT2Block(Module):
+    """Complete GPT-2 transformer block matching HuggingFace structure.
 
-
-class GPT2MultiHeadAttention(Module):
-    """Multi-head attention for GPT-2, matching HuggingFace structure."""
+    Architecture (pre-norm):
+    1. x = x + attention(layer_norm(x))
+    2. x = x + mlp(layer_norm(x))
+    """
 
     def __init__(self, config: GPT2Config):
-        """Initialize multi-head attention.
+        """Initialize transformer block.
 
         Args:
-            config: GPT2Config containing n_embd and n_head
+            config: GPT2Config containing model hyperparameters
         """
         super().__init__()
 
-        self.embed_dim = config.n_embd
-        self.num_heads = config.n_head
-        self.head_dim = self.embed_dim // self.num_heads
-        self.split_size = self.embed_dim
+        hidden_size = config.n_embd
+        # Inner dimension for MLP (4x hidden size by default)
+        inner_dim = (
+            config.n_inner
+            if hasattr(config, "n_inner") and config.n_inner is not None
+            else 4 * hidden_size
+        )
 
-        # Combined Q/K/V projection
-        self.c_attn = Linear(self.embed_dim, 3 * self.embed_dim, bias=True)
-        # Output projection
-        self.c_proj = Linear(self.embed_dim, self.embed_dim, bias=True)
-
-    def _split_heads(self, tensor, num_heads, attn_head_size):
-        """Split the last dimension into (num_heads, head_size).
-
-        Transforms shape from [batch, seq_length, n_embd]
-        to [batch, num_heads, seq_length, head_size]
-
-        Args:
-            tensor: Input tensor, shape [batch, seq_length, n_embd]
-            num_heads: Number of attention heads
-            attn_head_size: Dimension of each head
-
-        Returns:
-            Tensor with shape [batch, num_heads, seq_length, head_size]
-        """
-        # Add head dimension: [batch, seq_length, n_embd] -> [batch, seq_length, num_heads, head_size]
-        new_shape = tensor.shape[:-1] + [num_heads, attn_head_size]
-        tensor = tensor.reshape(new_shape)
-        # Move heads dimension: [batch, seq_length, num_heads, head_size] -> [batch, num_heads, seq_length, head_size]
-        return tensor.transpose(-3, -2)
-
-    def _merge_heads(self, tensor, num_heads, attn_head_size):
-        """Merge attention heads back to original shape.
-
-        Transforms shape from [batch, num_heads, seq_length, head_size]
-        to [batch, seq_length, n_embd]
-
-        Args:
-            tensor: Input tensor, shape [batch, num_heads, seq_length, head_size]
-            num_heads: Number of attention heads
-            attn_head_size: Dimension of each head
-
-        Returns:
-            Tensor with shape [batch, seq_length, n_embd]
-        """
-        # Move heads dimension back: [batch, num_heads, seq_length, head_size] -> [batch, seq_length, num_heads, head_size]
-        tensor = tensor.transpose(-3, -2)
-        # Flatten head dimensions: [batch, seq_length, num_heads, head_size] -> [batch, seq_length, n_embd]
-        new_shape = tensor.shape[:-2] + [num_heads * attn_head_size]
-        return tensor.reshape(new_shape)
-
-    def _attn(self, query, key, value):
-        """Compute attention for all heads in parallel.
-
-        Args:
-            query: Query tensor, shape [batch, num_heads, seq_length, head_size]
-            key: Key tensor, shape [batch, num_heads, seq_length, head_size]
-            value: Value tensor, shape [batch, num_heads, seq_length, head_size]
-
-        Returns:
-            Attention output, shape [batch, num_heads, seq_length, head_size]
-        """
-        # Compute attention scores
-        attn_weights = query @ key.transpose(-1, -2)
-
-        # Scale attention weights
-        attn_weights = attn_weights / math.sqrt(int(value.shape[-1]))
-
-        # Apply causal mask
-        seq_len = query.shape[-2]
-        mask = causal_mask(seq_len, 0, dtype=query.dtype, device=query.device)
-        attn_weights = attn_weights + mask
-
-        # Softmax and weighted sum
-        attn_weights = F.softmax(attn_weights)
-        attn_output = attn_weights @ value
-
-        return attn_output
+        # First layer norm (before attention)
+        self.ln_1 = LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
+        # Multi-head attention
+        self.attn = GPT2MultiHeadAttention(config)
+        # Second layer norm (before MLP)
+        self.ln_2 = LayerNorm(hidden_size, eps=config.layer_norm_epsilon)
+        # Feed-forward MLP
+        self.mlp = GPT2MLP(inner_dim, config)
 
     def __call__(self, hidden_states):
-        """Apply multi-head attention.
+        """Apply transformer block.
 
         Args:
             hidden_states: Input tensor, shape [batch, seq_length, n_embd]
 
         Returns:
-            Attention output, shape [batch, seq_length, n_embd]
+            Output tensor, shape [batch, seq_length, n_embd]
         """
-        # Project to Q, K, V
-        qkv = self.c_attn(hidden_states)
-        query, key, value = F.split(
-            qkv, [self.split_size, self.split_size, self.split_size], axis=-1
-        )
+        # Attention block with residual connection
+        residual = hidden_states
+        hidden_states = self.ln_1(hidden_states)
+        attn_output = self.attn(hidden_states)
+        hidden_states = attn_output + residual
 
-        # Split into multiple heads
-        query = self._split_heads(query, self.num_heads, self.head_dim)
-        key = self._split_heads(key, self.num_heads, self.head_dim)
-        value = self._split_heads(value, self.num_heads, self.head_dim)
+        # MLP block with residual connection
+        residual = hidden_states
+        hidden_states = self.ln_2(hidden_states)
+        feed_forward_hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + feed_forward_hidden_states
 
-        # Apply attention
-        attn_output = self._attn(query, key, value)
-
-        # Merge heads back
-        attn_output = self._merge_heads(attn_output, self.num_heads, self.head_dim)
-
-        # Output projection
-        attn_output = self.c_proj(attn_output)
-
-        return attn_output
+        return hidden_states

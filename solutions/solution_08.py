@@ -1,84 +1,105 @@
 """
-Solution for Step 08: Attention Mechanism with Causal Masking
+Solution for Step 10: Residual Connections and Layer Normalization
 
-This module implements the core attention mechanism that computes relevance-based
-weighted combinations of values using scaled dot-product attention with causal masking.
+This module implements layer normalization and demonstrates residual connections,
+which are essential for training deep transformer networks.
 """
 
-import math
-
-from max.driver import Device
-from max.dtype import DType
 from max.experimental import functional as F
-from max.graph import Dim, DimLike
 from max.experimental.tensor import Tensor
+from max.graph import DimLike
+from max.nn.module_v3 import Module
 
 
-@F.functional
-def causal_mask(
-    sequence_length: DimLike,
-    num_tokens: DimLike,
-    *,
-    dtype: DType,
-    device: Device,
-):
-    """Create a causal attention mask.
+class LayerNorm(Module):
+    """Layer normalization module matching HuggingFace GPT-2.
 
-    This mask prevents tokens from attending to future positions.
-    The mask contains 0 for allowed positions and -inf for masked positions.
+    Layer norm normalizes activations across the feature dimension,
+    stabilizing training and allowing deeper networks.
+    """
+
+    def __init__(self, dim: DimLike, *, eps: float = 1e-5):
+        """Initialize layer normalization.
+
+        Args:
+            dim: Dimension to normalize (embedding dimension)
+            eps: Small epsilon for numerical stability
+        """
+        super().__init__()
+        self.eps = eps
+        # Learnable scale parameter (gamma)
+        self.weight = Tensor.ones([dim])
+        # Learnable shift parameter (beta)
+        self.bias = Tensor.zeros([dim])
+
+    def __call__(self, x: Tensor) -> Tensor:
+        """Apply layer normalization.
+
+        Args:
+            x: Input tensor, shape [..., dim]
+
+        Returns:
+            Normalized tensor, same shape as input
+        """
+        return F.layer_norm(x, gamma=self.weight, beta=self.bias, epsilon=self.eps)
+
+
+class ResidualBlock(Module):
+    """Demonstrates residual connections with layer normalization.
+
+    This shows the pre-norm architecture used in GPT-2:
+    output = input + sublayer(layer_norm(input))
+    """
+
+    def __init__(self, dim: int, eps: float = 1e-5):
+        """Initialize residual block.
+
+        Args:
+            dim: Dimension of the input/output
+            eps: Epsilon for layer normalization
+        """
+        super().__init__()
+        self.ln = LayerNorm(dim, eps=eps)
+
+    def __call__(self, x: Tensor, sublayer_output: Tensor) -> Tensor:
+        """Apply residual connection.
+
+        This demonstrates the pattern:
+        1. Normalize input: ln(x)
+        2. Apply sublayer (passed as argument for simplicity)
+        3. Add residual: x + sublayer_output
+
+        In practice, the sublayer (attention or MLP) is applied to ln(x),
+        but we receive the result as a parameter for clarity.
+
+        Args:
+            x: Input tensor (the residual)
+            sublayer_output: Output from sublayer applied to ln(x)
+
+        Returns:
+            x + sublayer_output
+        """
+        # In a real transformer block, you would do:
+        # residual = x
+        # x = self.ln(x)
+        # x = sublayer(x)  # e.g., attention or MLP
+        # x = x + residual
+
+        # For this demonstration, we just add
+        return x + sublayer_output
+
+
+def apply_residual_connection(input_tensor: Tensor, sublayer_output: Tensor) -> Tensor:
+    """Apply a residual connection by adding input to sublayer output.
+
+    Residual connections allow gradients to flow directly through the network,
+    enabling training of very deep models.
 
     Args:
-        sequence_length: Length of the sequence
-        num_tokens: Number of new tokens (usually 0 for full sequence)
-        dtype: Data type of the mask
-        device: Device to create the mask on
+        input_tensor: Original input (the residual)
+        sublayer_output: Output from a sublayer (attention, MLP, etc.)
 
     Returns:
-        Causal mask tensor of shape [sequence_length, sequence_length + num_tokens]
+        input_tensor + sublayer_output
     """
-    n = Dim(sequence_length) + num_tokens
-    mask = Tensor.constant(float("-inf"), dtype=dtype, device=device)
-    mask = F.broadcast_to(mask, shape=(sequence_length, n))
-    # band_part with exclude=True gives upper triangle (excluding diagonal) as -inf
-    return F.band_part(mask, num_lower=None, num_upper=0, exclude=True)
-
-
-def compute_attention(query, key, value):
-    """Compute scaled dot-product attention with causal masking.
-
-    This implements the core attention mechanism:
-    1. Compute attention scores (Q @ K^T)
-    2. Scale by sqrt(d_k)
-    3. Apply causal mask (prevent attending to future)
-    4. Softmax to get attention probabilities
-    5. Weighted sum of values
-
-    Args:
-        query: Query tensor, shape [..., seq_length, d_k]
-        key: Key tensor, shape [..., seq_length, d_k]
-        value: Value tensor, shape [..., seq_length, d_v]
-
-    Returns:
-        Attention output, shape [..., seq_length, d_v]
-    """
-    # Step 1: Compute attention scores
-    # Shape: [..., seq_length, seq_length]
-    attn_weights = query @ key.transpose(-1, -2)
-
-    # Step 2: Scale by sqrt(d_k) to prevent softmax saturation
-    # d_k is the last dimension of the key (or value)
-    scale_factor = math.sqrt(int(value.shape[-1]))
-    attn_weights = attn_weights / scale_factor
-
-    # Step 3: Apply causal mask to prevent attending to future positions
-    seq_len = query.shape[-2]
-    mask = causal_mask(seq_len, 0, dtype=query.dtype, device=query.device)
-    attn_weights = attn_weights + mask  # -inf for future positions
-
-    # Step 4: Softmax converts scores to probabilities
-    attn_weights = F.softmax(attn_weights)
-
-    # Step 5: Weighted sum of values using attention probabilities
-    attn_output = attn_weights @ value
-
-    return attn_output
+    return input_tensor + sublayer_output

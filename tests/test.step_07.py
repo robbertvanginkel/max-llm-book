@@ -1,15 +1,14 @@
-"""Tests for Step 07: Query/Key/Value Projections"""
+"""Tests for Step 09: Multi-head Attention"""
 
 import ast
-import inspect
 from pathlib import Path
 
 
-def test_step_07():
-    """Comprehensive validation for Step 07 implementation."""
+def test_step_09():
+    """Comprehensive validation for Step 09 implementation."""
 
     results = []
-    step_file = Path("steps/step_07.py")
+    step_file = Path("steps/step_09.py")
 
     # Read source
     if not step_file.exists():
@@ -20,11 +19,16 @@ def test_step_07():
     tree = ast.parse(source)
 
     # Phase 1: Import checks
+    has_math = False
     has_linear = False
     has_module = False
     has_functional = False
 
     for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "math":
+                    has_math = True
         if isinstance(node, ast.ImportFrom):
             if node.module == "max.nn.module_v3":
                 for alias in node.names:
@@ -38,6 +42,12 @@ def test_step_07():
                         alias.asname and alias.asname == "F"
                     ):
                         has_functional = True
+
+    if has_math:
+        results.append("✅ math is correctly imported")
+    else:
+        results.append("❌ math is not imported")
+        results.append("   Hint: Add 'import math'")
 
     if has_linear:
         results.append("✅ Linear is correctly imported from max.nn.module_v3")
@@ -59,24 +69,32 @@ def test_step_07():
 
     # Phase 2: Structure checks
     try:
-        from steps.step_07 import GPT2SingleHeadQKV
+        from steps.step_09 import GPT2MultiHeadAttention, causal_mask
 
-        results.append("✅ GPT2SingleHeadQKV class exists")
-    except ImportError:
-        results.append("❌ GPT2SingleHeadQKV class not found in step_07 module")
-        results.append("   Hint: Create class GPT2SingleHeadQKV(Module)")
+        results.append("✅ GPT2MultiHeadAttention class exists")
+        results.append("✅ causal_mask function exists")
+    except ImportError as e:
+        if "GPT2MultiHeadAttention" in str(e):
+            results.append(
+                "❌ GPT2MultiHeadAttention class not found in step_09 module"
+            )
+            results.append("   Hint: Create class GPT2MultiHeadAttention(Module)")
+        if "causal_mask" in str(e):
+            results.append("❌ causal_mask function not found")
+            results.append("   Hint: Copy causal_mask from solution_08.py")
         print("\n".join(results))
         return
 
     # Check inheritance
     from max.nn.module_v3 import Module
 
-    if issubclass(GPT2SingleHeadQKV, Module):
-        results.append("✅ GPT2SingleHeadQKV inherits from Module")
+    if issubclass(GPT2MultiHeadAttention, Module):
+        results.append("✅ GPT2MultiHeadAttention inherits from Module")
     else:
-        results.append("❌ GPT2SingleHeadQKV must inherit from Module")
+        results.append("❌ GPT2MultiHeadAttention must inherit from Module")
 
     # Phase 3: Implementation checks
+    # Check layer creation
     if "self.c_attn = Linear" in source or (
         "self.c_attn =" in source
         and "None" not in source.split("self.c_attn =")[1].split("\n")[0]
@@ -85,65 +103,111 @@ def test_step_07():
     else:
         results.append("❌ self.c_attn linear layer is not created correctly")
         results.append(
-            "   Hint: Use Linear(config.n_embd, 3 * config.n_embd, bias=True)"
+            "   Hint: Use Linear(self.embed_dim, 3 * self.embed_dim, bias=True)"
         )
 
-    # Check if 3 * n_embd is used
-    if "3 * config.n_embd" in source or "config.n_embd * 3" in source:
-        results.append("✅ Output dimension is correctly set to 3 * n_embd")
+    if "self.c_proj = Linear" in source or (
+        "self.c_proj =" in source
+        and "None" not in source.split("self.c_proj =")[1].split("\n")[0]
+    ):
+        results.append("✅ self.c_proj linear layer is created correctly")
     else:
-        results.append("❌ Output dimension should be 3 * config.n_embd")
-        results.append("   Hint: Second parameter should be 3 * config.n_embd")
+        results.append("❌ self.c_proj linear layer is not created correctly")
+        results.append("   Hint: Use Linear(self.embed_dim, self.embed_dim, bias=True)")
 
-    # Check if bias=True
-    if "bias=True" in source:
-        results.append("✅ bias=True is set correctly")
+    # Check _split_heads
+    if "tensor.reshape" in source and "_split_heads" in source:
+        results.append("✅ _split_heads uses tensor.reshape")
     else:
-        results.append("❌ bias parameter not found or incorrect")
-        results.append("   Hint: Add bias=True to Linear layer")
+        results.append("❌ _split_heads should use tensor.reshape")
+        results.append("   Hint: tensor = tensor.reshape(new_shape)")
+
+    if "transpose(-3, -2)" in source.replace(
+        " ", ""
+    ) or "transpose(-3,-2)" in source.replace(" ", ""):
+        results.append("✅ _split_heads uses transpose(-3, -2)")
+    else:
+        results.append("❌ _split_heads should use transpose(-3, -2)")
+        results.append("   Hint: return tensor.transpose(-3, -2)")
+
+    # Check _merge_heads
+    merge_heads_source = (
+        source[source.find("def _merge_heads") : source.find("def _attn")]
+        if "def _attn" in source
+        else source[source.find("def _merge_heads") :]
+    )
+    if "transpose" in merge_heads_source and "reshape" in merge_heads_source:
+        results.append("✅ _merge_heads uses transpose and reshape")
+    else:
+        results.append("❌ _merge_heads should use transpose and reshape")
+        results.append(
+            "   Hint: tensor.transpose(-3, -2) then tensor.reshape(new_shape)"
+        )
+
+    # Check _attn
+    if "query @ key.transpose(-1, -2)" in source.replace(" ", ""):
+        results.append("✅ _attn computes Q @ K^T")
+    else:
+        results.append("❌ _attn should compute query @ key.transpose(-1, -2)")
+        results.append("   Hint: Copy attention computation from Step 08")
+
+    if source.count("F.softmax") > 0:
+        results.append("✅ _attn uses F.softmax")
+    else:
+        results.append("❌ _attn should use F.softmax")
+        results.append("   Hint: Copy attention computation from Step 08")
 
     # Check forward pass
-    if "self.c_attn(x)" in source.replace(" ", "") or "self.c_attn(x)" in source:
-        results.append("✅ self.c_attn is called with input x")
+    if "self.c_attn(hidden_states)" in source.replace(" ", ""):
+        results.append("✅ Forward pass projects with c_attn")
     else:
-        results.append("❌ self.c_attn is not called with x")
-        results.append("   Hint: Call self.c_attn(x) to project input")
+        results.append("❌ Forward pass should call self.c_attn(hidden_states)")
+        results.append("   Hint: qkv = self.c_attn(hidden_states)")
 
-    # Check F.split usage
-    if "F.split" in source:
-        results.append("✅ F.split is used to separate Q, K, V")
+    if "F.split" in source and "__call__" in source:
+        results.append("✅ Forward pass splits Q, K, V")
     else:
-        results.append("❌ F.split is not used")
+        results.append("❌ Forward pass should use F.split to separate Q, K, V")
+        results.append("   Hint: query, key, value = F.split(qkv, ...)")
+
+    if "self._split_heads" in source:
+        results.append("✅ Forward pass calls _split_heads")
+    else:
+        results.append("❌ Forward pass should call self._split_heads")
         results.append(
-            "   Hint: Use F.split(qkv, [self.n_embd, self.n_embd, self.n_embd], axis=-1)"
+            "   Hint: query = self._split_heads(query, self.num_heads, self.head_dim)"
         )
 
-    # Check if split sizes are correct
-    if "[self.n_embd, self.n_embd, self.n_embd]" in source.replace(" ", ""):
-        results.append("✅ Split sizes are correctly set to [n_embd, n_embd, n_embd]")
+    if "self._attn" in source:
+        results.append("✅ Forward pass calls _attn")
     else:
-        results.append("❌ Split sizes may be incorrect")
-        results.append("   Hint: Use [self.n_embd, self.n_embd, self.n_embd]")
+        results.append("❌ Forward pass should call self._attn")
+        results.append("   Hint: attn_output = self._attn(query, key, value)")
 
-    # Check if axis=-1
-    if "axis=-1" in source or "axis=2" in source:
-        results.append("✅ Split axis is correctly set")
+    if "self._merge_heads" in source:
+        results.append("✅ Forward pass calls _merge_heads")
     else:
-        results.append("❌ Split axis should be -1 or 2")
-        results.append("   Hint: Add axis=-1 to F.split")
+        results.append("❌ Forward pass should call self._merge_heads")
+        results.append("   Hint: attn_output = self._merge_heads(attn_output, ...)")
+
+    if "self.c_proj" in source and "__call__" in source:
+        results.append("✅ Forward pass uses c_proj for output projection")
+    else:
+        results.append("❌ Forward pass should call self.c_proj")
+        results.append("   Hint: attn_output = self.c_proj(attn_output)")
 
     # Phase 4: Placeholder detection
     none_lines = [
         line.strip()
         for line in source.split("\n")
-        if "= None" in line
+        if ("= None" in line or "return None" in line)
         and not line.strip().startswith("#")
         and "def " not in line
-        and ":" not in line.split("=")[0]
+        and "Optional" not in line
     ]
     if none_lines:
         results.append("❌ Found placeholder 'None' values that need to be replaced:")
-        for line in none_lines[:3]:
+        for line in none_lines[:5]:
             results.append(f"   {line}")
         results.append(
             "   Hint: Replace all 'None' values with the actual implementation"
@@ -157,86 +221,87 @@ def test_step_07():
         from max.dtype import DType
         from max.experimental.tensor import Tensor
         from solutions.solution_01 import GPT2Config
+        import numpy as np
 
         config = GPT2Config()
-        qkv_layer = GPT2SingleHeadQKV(config)
-        results.append("✅ GPT2SingleHeadQKV class can be instantiated")
+        mha = GPT2MultiHeadAttention(config)
+        results.append("✅ GPT2MultiHeadAttention class can be instantiated")
 
-        # Check c_attn attribute exists
-        if hasattr(qkv_layer, "c_attn"):
-            results.append("✅ GPT2SingleHeadQKV.c_attn is initialized")
+        # Check attributes
+        if hasattr(mha, "c_attn"):
+            results.append("✅ GPT2MultiHeadAttention.c_attn is initialized")
         else:
-            results.append("❌ GPT2SingleHeadQKV.c_attn attribute not found")
+            results.append("❌ GPT2MultiHeadAttention.c_attn attribute not found")
 
-        # Test forward pass with sample input
+        if hasattr(mha, "c_proj"):
+            results.append("✅ GPT2MultiHeadAttention.c_proj is initialized")
+        else:
+            results.append("❌ GPT2MultiHeadAttention.c_proj attribute not found")
+
+        # Test forward pass
         batch_size = 2
         seq_length = 8
         test_input = Tensor.randn(
             batch_size, seq_length, config.n_embd, dtype=DType.float32, device=CPU()
         )
 
-        query, key, value = qkv_layer(test_input)
-        results.append("✅ GPT2SingleHeadQKV forward pass executes without errors")
+        output = mha(test_input)
+        results.append("✅ GPT2MultiHeadAttention forward pass executes without errors")
 
-        # Check output shapes
+        # Check output shape
         expected_shape = (batch_size, seq_length, config.n_embd)
-        if query.shape == expected_shape:
-            results.append(f"✅ Query shape is correct: {expected_shape}")
+        if output.shape == expected_shape:
+            results.append(f"✅ Output shape is correct: {expected_shape}")
         else:
             results.append(
-                f"❌ Query shape is incorrect: expected {expected_shape}, got {query.shape}"
+                f"❌ Output shape is incorrect: expected {expected_shape}, got {output.shape}"
             )
 
-        if key.shape == expected_shape:
-            results.append(f"✅ Key shape is correct: {expected_shape}")
+        # Check output contains non-zero values
+        output_np = np.from_dlpack(output.to(CPU()))
+        if not np.allclose(output_np, 0):
+            results.append("✅ Output contains non-zero values")
+        else:
+            results.append("❌ Output is all zeros")
+
+        # Test _split_heads
+        test_tensor = Tensor.randn(
+            batch_size, seq_length, config.n_embd, dtype=DType.float32, device=CPU()
+        )
+        split_output = mha._split_heads(test_tensor, config.n_head, mha.head_dim)
+        expected_split_shape = (batch_size, config.n_head, seq_length, mha.head_dim)
+        if split_output.shape == expected_split_shape:
+            results.append(
+                f"✅ _split_heads output shape is correct: {expected_split_shape}"
+            )
         else:
             results.append(
-                f"❌ Key shape is incorrect: expected {expected_shape}, got {key.shape}"
+                f"❌ _split_heads output shape incorrect: expected {expected_split_shape}, got {split_output.shape}"
             )
 
-        if value.shape == expected_shape:
-            results.append(f"✅ Value shape is correct: {expected_shape}")
+        # Test _merge_heads
+        merge_output = mha._merge_heads(split_output, config.n_head, mha.head_dim)
+        expected_merge_shape = (batch_size, seq_length, config.n_embd)
+        if merge_output.shape == expected_merge_shape:
+            results.append(
+                f"✅ _merge_heads output shape is correct: {expected_merge_shape}"
+            )
         else:
             results.append(
-                f"❌ Value shape is incorrect: expected {expected_shape}, got {value.shape}"
+                f"❌ _merge_heads output shape incorrect: expected {expected_merge_shape}, got {merge_output.shape}"
             )
-
-        # Verify outputs are not all zeros
-        import numpy as np
-
-        query_np = np.from_dlpack(query.to(CPU()))
-        key_np = np.from_dlpack(key.to(CPU()))
-        value_np = np.from_dlpack(value.to(CPU()))
-
-        if not np.allclose(query_np, 0):
-            results.append("✅ Query contains non-zero values")
-        else:
-            results.append("❌ Query is all zeros - projection may not be initialized")
-
-        if not np.allclose(key_np, 0):
-            results.append("✅ Key contains non-zero values")
-        else:
-            results.append("❌ Key is all zeros - projection may not be initialized")
-
-        if not np.allclose(value_np, 0):
-            results.append("✅ Value contains non-zero values")
-        else:
-            results.append("❌ Value is all zeros - projection may not be initialized")
-
-        # Test that Q, K, V are different
-        if not np.allclose(query_np, key_np):
-            results.append("✅ Query and Key are different (as expected)")
-        else:
-            results.append("⚠️ Warning: Query and Key are identical")
 
     except Exception as e:
         results.append(f"❌ Functional test failed: {e}")
         import traceback
 
-        results.append(f"   {traceback.format_exc().split('Error:')[-1].strip()}")
+        tb = traceback.format_exc()
+        error_lines = [line for line in tb.split("\n") if line.strip()]
+        if error_lines:
+            results.append(f"   {error_lines[-1]}")
 
     # Print all results
-    print("Running tests for Step 07: Query/Key/Value Projections...\n")
+    print("Running tests for Step 09: Multi-head Attention...\n")
     print("Results:")
     print("\n".join(results))
 
@@ -253,4 +318,4 @@ def test_step_07():
 
 
 if __name__ == "__main__":
-    test_step_07()
+    test_step_09()

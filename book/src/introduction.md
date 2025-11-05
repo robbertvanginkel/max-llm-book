@@ -68,14 +68,12 @@ This tutorial guides you through building GPT-2 in manageable steps:
 | 4    | [GPT-2 MLP (feed-forward network)](./step_04.md)  | Build the position-wise feed-forward network with GELU activation. |
 | 5    | [Token embeddings](./step_05.md)                  | Convert token IDs to continuous vector representations.            |
 | 6    | [Position embeddings](./step_06.md)               | Encode sequence order information.                                 |
-| 7    | [Query/Key/Value projections](./step_07.md)       | Transform embeddings for attention computation (single head).      |
-| 8    | [Attention mechanism](./step_08.md)               | Implement scaled dot-product attention with causal masking.        |
-| 9    | [Multi-head attention](./step_09.md)              | Extend to multiple parallel attention heads.                       |
-| 10   | [Residual connections & layer norm](./step_10.md) | Enable training deep networks with skip connections.               |
-| 11   | [Transformer block](./step_11.md)                 | Combine attention and MLP into the core building block.            |
-| 12   | [Stacking transformer blocks](./step_12.md)       | Create the complete 12-layer GPT-2 model.                          |
-| 13   | [Language model head](./step_13.md)               | Project hidden states to vocabulary logits.                        |
-| 14   | [Text generation](./step_14.md)                   | Generate text autoregressively with temperature sampling.          |
+| 7    | [Multi-head attention](./step_07.md)              | Extend to multiple parallel attention heads.                       |
+| 8    | [Residual connections & layer norm](./step_08.md) | Enable training deep networks with skip connections.               |
+| 9    | [Transformer block](./step_09.md)                 | Combine attention and MLP into the core building block.            |
+| 10   | [Stacking transformer blocks](./step_10.md)       | Create the complete 12-layer GPT-2 model.                          |
+| 11   | [Language model head](./step_11.md)               | Project hidden states to vocabulary logits.                        |
+| 12   | [Text generation](./step_12.md)                   | Generate text autoregressively with temperature sampling.          |
 
 Each step includes:
 
@@ -113,7 +111,9 @@ Results:
 # ...
 ```
 
-Each failure tells you exactly what to implement. When your implementation is
+Each failure tells you exactly what to implement.
+
+When your implementation is
 correct, you'll see:
 
 ```output
