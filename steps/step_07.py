@@ -1,5 +1,5 @@
 """
-Step 09: Multi-head Attention
+Step 07: Multi-head Attention
 
 Implement multi-head attention that splits Q/K/V into multiple heads,
 computes attention in parallel for each head, and merges the results.
@@ -12,7 +12,7 @@ Tasks:
 5. Implement _attn: compute attention for all heads in parallel
 6. Implement forward pass: project -> split -> attend -> merge -> project
 
-Run: pixi run s09
+Run: pixi run s07
 """
 
 # TODO: Import required modules

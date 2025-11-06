@@ -1,5 +1,5 @@
 """
-Step 13: Language Model Head
+Step 11: Language Model Head
 
 Add the final projection layer that converts hidden states to vocabulary logits.
 
@@ -8,7 +8,7 @@ Tasks:
 2. Create transformer and lm_head layers
 3. Implement forward pass: transformer -> lm_head
 
-Run: pixi run s13
+Run: pixi run s11
 """
 
 # TODO: Import required modules

@@ -1,5 +1,5 @@
 """
-Step 11: Transformer Block
+Step 09: Transformer Block
 
 Combine multi-head attention, MLP, layer normalization, and residual
 connections into a complete transformer block.
@@ -9,7 +9,7 @@ Tasks:
 2. Create ln_1, attn, ln_2, and mlp layers
 3. Implement forward pass with pre-norm residual pattern
 
-Run: pixi run s11
+Run: pixi run s09
 """
 
 # TODO: Import required modules

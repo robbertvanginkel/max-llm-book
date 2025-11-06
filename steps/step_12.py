@@ -1,5 +1,5 @@
 """
-Step 14: Text Generation
+Step 12: Text Generation
 
 Implement autoregressive text generation with sampling and temperature control.
 
@@ -8,7 +8,7 @@ Tasks:
 2. Implement generate_next_token: get logits, apply temperature, sample/argmax
 3. Implement generate_tokens: loop to generate multiple tokens
 
-Run: pixi run s14
+Run: pixi run s12
 """
 
 # TODO: Import required modules

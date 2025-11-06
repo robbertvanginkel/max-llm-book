@@ -1,5 +1,5 @@
 """
-Step 12: Stacking Transformer Blocks
+Step 10: Stacking Transformer Blocks
 
 Stack multiple transformer blocks with embeddings to create
 the complete GPT-2 model architecture.
@@ -11,7 +11,7 @@ Tasks:
 4. Create final layer normalization
 5. Implement forward pass: embeddings -> blocks -> layer norm
 
-Run: pixi run s12
+Run: pixi run s10
 """
 
 # TODO: Import required modules

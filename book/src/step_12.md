@@ -124,7 +124,10 @@ the high-level architecture decisions.
 
 ## What's next?
 
-You now understand the architectural foundation that powers modern language models. LLaMA, Mistral, and more build on these same components with incremental refinements. You have everything you need to implement those refinements yourself.
+You now understand the architectural foundation that powers modern language
+models. LLaMA, Mistral, and more build on these same components with incremental
+refinements. You have everything you need to implement those refinements
+yourself.
 
 Consider extending your implementation with:
 
@@ -133,6 +136,11 @@ Consider extending your implementation with:
 - **SwiGLU activation**: Swap GELU for the gated linear unit variant used in LLaMA and PaLM.
 - **Mixture of experts (MoE)**: Add sparse expert routing to scale model capacity efficiently, as in Mixtral and GPT-4.
 
-Each refinement builds directly on what you've implemented. The attention mechanism you wrote becomes grouped-query attention with a simple modification to how you reshape key-value tensors. Your position embeddings can be replaced with RoPE by changing how you encode positional information. The feed-forward network you built becomes SwiGLU by adding a gating mechanism.
+Each refinement builds directly on what you've implemented. The attention
+mechanism you wrote becomes grouped-query attention with a simple modification
+to how you reshape key-value tensors. Your position embeddings can be replaced
+with RoPE by changing how you encode positional information. The feed-forward
+network you built becomes SwiGLU by adding a gating mechanism.
 
-Pick an architecture that interests you and start building. You'll find the patterns are familiar because the fundamentals haven't changed.
+Pick an architecture that interests you and start building. You'll find the
+patterns are familiar because the fundamentals haven't changed.

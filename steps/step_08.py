@@ -1,5 +1,5 @@
 """
-Step 10: Residual Connections and Layer Normalization
+Step 08: Residual Connections and Layer Normalization
 
 Implement layer normalization and residual connections, which enable
 training deep transformer networks by stabilizing gradients.
@@ -10,7 +10,7 @@ Tasks:
 3. Implement layer norm using F.layer_norm
 4. Implement residual connection (simple addition)
 
-Run: pixi run s10
+Run: pixi run s08
 """
 
 # TODO: Import required modules
