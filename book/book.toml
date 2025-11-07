@@ -3,7 +3,7 @@ authors = ["Modular <hello@modular.com>"]
 language = "en"
 multilingual = false
 src = "src"
-title = "MAX GPT-2"
+title = "Build an LLM with MAX"
 version = "1.0.0"
 
 [output.html]
