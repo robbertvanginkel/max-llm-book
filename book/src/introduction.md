@@ -1,20 +1,28 @@
 # Build an LLM from scratch in MAX
 
+<div class="warning">
+
+**Experimental APIs:** The APIs in the
+[experimental](https://docs.modular.com/max/api/python/experimental/) package
+are subject to change. Share feedback on the
+[MAX LLMs forum](https://forum.modular.com/tag/max-llms).
+
+</div>
+
 Transformer models power today's most impactful AI applications, from language models like ChatGPT to code generation tools like GitHub Copilot. Maybe you've been asked to adapt one of these models for your team, or you want to understand what's actually happening when you call an inference API. Either way, building a transformer from scratch is one of the best ways to truly understand how they work.
 
 This guide walks you through implementing GPT-2 using Modular's MAX framework [experimental API](https://docs.modular.com/max/api/python/experimental/). You'll build each component yourself: embeddings, attention mechanisms, and feed-forward layers. You'll see how they fit together into a complete language model by completing the sequential coding challenges in the tutorial [GitHub repository](https://github.com/modular/max-gpt2).
 
 <div class="note">
-<strong>This API is unstable</strong>: This tutorial is built on the MAX Experimental API,
-which we expect to change over time and expand to include new features and
-functionality. As it evolves, we plan to update the tutorial accordingly.
-When this API comes out of experimental development, the tutorial content
-will also enter a more stable state.  While in development, this tutorial will
-be pinned to a major release version.
+
+<strong>This API is unstable</strong>: This tutorial is built on the MAX
+Experimental API, which we expect to change over time and expand to include new
+features and functionality. As it evolves, we plan to update the tutorial
+accordingly. When this API comes out of experimental development, the tutorial
+content will also enter a more stable state. While in development, this tutorial
+will be pinned to a major release version.
 
 </div>
-
-
 
 ## Why GPT-2?
 
