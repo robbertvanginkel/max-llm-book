@@ -44,15 +44,15 @@ def test_step_10():
                         has_module = True
                     if alias.name == "Sequential":
                         has_sequential = True
-            if node.module == "solutions.solution_01":
+            if node.module == "step_01":
                 for alias in node.names:
                     if alias.name == "GPT2Config":
                         has_config = True
-            if node.module == "solutions.solution_08":
+            if node.module == "step_08":
                 for alias in node.names:
                     if alias.name == "LayerNorm":
                         has_layernorm = True
-            if node.module == "solutions.solution_09":
+            if node.module == "step_09":
                 for alias in node.names:
                     if alias.name == "GPT2Block":
                         has_block = True
@@ -91,19 +91,19 @@ def test_step_10():
         results.append("✅ GPT2Config is correctly imported")
     else:
         results.append("❌ GPT2Config is not imported")
-        results.append("   Hint: Add 'from solutions.solution_01 import GPT2Config'")
+        results.append("   Hint: Add 'from step_01 import GPT2Config'")
 
     if has_layernorm:
         results.append("✅ LayerNorm is correctly imported")
     else:
         results.append("❌ LayerNorm is not imported")
-        results.append("   Hint: Add 'from solutions.solution_08 import LayerNorm'")
+        results.append("   Hint: Add 'from step_08 import LayerNorm'")
 
     if has_block:
         results.append("✅ GPT2Block is correctly imported")
     else:
         results.append("❌ GPT2Block is not imported")
-        results.append("   Hint: Add 'from solutions.solution_09 import GPT2Block'")
+        results.append("   Hint: Add 'from step_09 import GPT2Block'")
 
     # Phase 2: Structure checks
     try:
@@ -234,7 +234,7 @@ def test_step_10():
         from max.driver import CPU
         from max.dtype import DType
         from max.experimental.tensor import Tensor
-        from solutions.solution_01 import GPT2Config
+        from steps.step_01 import GPT2Config
         import numpy as np
 
         config = GPT2Config()
