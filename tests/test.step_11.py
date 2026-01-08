@@ -23,8 +23,8 @@ def test_step_11():
     # Phase 1: Import checks
     has_linear = "from max.nn.module_v3 import" in source and "Linear" in source
     has_module = "from max.nn.module_v3 import" in source and "Module" in source
-    has_config = "from solutions.solution_01 import GPT2Config" in source
-    has_model = "from solutions.solution_10 import GPT2Model" in source
+    has_config = "step_01 import GPT2Config" in source
+    has_model = "step_10 import GPT2Model" in source
 
     if has_linear:
         results.append("✅ Linear is correctly imported")
@@ -42,13 +42,13 @@ def test_step_11():
         results.append("✅ GPT2Config is correctly imported")
     else:
         results.append("❌ GPT2Config is not imported")
-        results.append("   Hint: Add 'from solutions.solution_01 import GPT2Config'")
+        results.append("   Hint: Add 'from step_01 import GPT2Config'")
 
     if has_model:
         results.append("✅ GPT2Model is correctly imported")
     else:
         results.append("❌ GPT2Model is not imported")
-        results.append("   Hint: Add 'from solutions.solution_12 import GPT2Model'")
+        results.append("   Hint: Add 'from step_12 import GPT2Model'")
 
     # Phase 2: Structure checks
     try:
@@ -118,7 +118,7 @@ def test_step_11():
         from max.driver import CPU
         from max.dtype import DType
         from max.experimental.tensor import Tensor
-        from solutions.solution_01 import GPT2Config
+        from steps.step_01 import GPT2Config
         import numpy as np
 
         config = GPT2Config()

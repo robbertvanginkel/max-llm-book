@@ -11,11 +11,9 @@ Tasks:
 Run: pixi run s11
 """
 
-# TODO: Import required modules
-# Hint: You'll need Linear and Module from max.nn.module_v3
-# Hint: Import GPT2Config from solutions.solution_01
-# Hint: Import GPT2Model from solutions.solution_10
-
+from max.nn.module_v3 import Linear, Module
+from .step_01 import GPT2Config
+from .step_10 import GPT2Model
 
 class MaxGPT2LMHeadModel(Module):
     """Complete GPT-2 model with language modeling head."""
@@ -29,15 +27,8 @@ class MaxGPT2LMHeadModel(Module):
         super().__init__()
 
         self.config = config
-
-        # TODO: Create the transformer
-        # Hint: Use GPT2Model(config)
-        self.transformer = None
-
-        # TODO: Create language modeling head
-        # Hint: Use Linear(config.n_embd, config.vocab_size, bias=False)
-        # Projects from hidden dimension to vocabulary size
-        self.lm_head = None
+        self.transformer = GPT2Model(config)
+        self.lm_head = Linear(config.n_embd, config.vocab_size, bias=False)
 
     def __call__(self, input_ids):
         """Forward pass through transformer and LM head.
@@ -48,13 +39,6 @@ class MaxGPT2LMHeadModel(Module):
         Returns:
             Logits over vocabulary, shape [batch, seq_length, vocab_size]
         """
-        # TODO: Get hidden states from transformer
-        # Hint: hidden_states = self.transformer(input_ids)
-        pass
-
-        # TODO: Project to vocabulary logits
-        # Hint: logits = self.lm_head(hidden_states)
-        pass
-
-        # TODO: Return logits
-        return None
+        hidden_states = self.transformer(input_ids)
+        logits = self.lm_head(hidden_states)
+        return logits
