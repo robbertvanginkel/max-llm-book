@@ -34,19 +34,19 @@ def test_step_09():
                 for alias in node.names:
                     if alias.name == "Module":
                         has_module = True
-            if node.module == "solutions.solution_01":
+            if node.module == "step_01":
                 for alias in node.names:
                     if alias.name == "GPT2Config":
                         has_config = True
-            if node.module == "solutions.solution_04":
+            if node.module == "step_04":
                 for alias in node.names:
                     if alias.name == "GPT2MLP":
                         has_mlp = True
-            if node.module == "solutions.solution_07":
+            if node.module == "step_07":
                 for alias in node.names:
                     if alias.name == "GPT2MultiHeadAttention":
                         has_attention = True
-            if node.module == "solutions.solution_08":
+            if node.module == "step_08":
                 for alias in node.names:
                     if alias.name == "LayerNorm":
                         has_layernorm = True
@@ -58,32 +58,32 @@ def test_step_09():
         results.append("   Hint: Add 'from max.nn.module_v3 import Module'")
 
     if has_config:
-        results.append("✅ GPT2Config is correctly imported from solutions.solution_01")
+        results.append("✅ GPT2Config is correctly imported from step_01")
     else:
         results.append("❌ GPT2Config is not imported")
-        results.append("   Hint: Add 'from solutions.solution_01 import GPT2Config'")
+        results.append("   Hint: Add 'from step_01 import GPT2Config'")
 
     if has_mlp:
-        results.append("✅ GPT2MLP is correctly imported from solutions.solution_04")
+        results.append("✅ GPT2MLP is correctly imported from step_04")
     else:
         results.append("❌ GPT2MLP is not imported")
-        results.append("   Hint: Add 'from solutions.solution_04 import GPT2MLP'")
+        results.append("   Hint: Add 'from step_04 import GPT2MLP'")
 
     if has_attention:
         results.append(
-            "✅ GPT2MultiHeadAttention is correctly imported from solutions.solution_09"
+            "✅ GPT2MultiHeadAttention is correctly imported from step_09"
         )
     else:
         results.append("❌ GPT2MultiHeadAttention is not imported")
         results.append(
-            "   Hint: Add 'from solutions.solution_09 import GPT2MultiHeadAttention'"
+            "   Hint: Add 'from step_09 import GPT2MultiHeadAttention'"
         )
 
     if has_layernorm:
-        results.append("✅ LayerNorm is correctly imported from solutions.solution_10")
+        results.append("✅ LayerNorm is correctly imported from step_10")
     else:
         results.append("❌ LayerNorm is not imported")
-        results.append("   Hint: Add 'from solutions.solution_10 import LayerNorm'")
+        results.append("   Hint: Add 'from step_10 import LayerNorm'")
 
     # Phase 2: Structure checks
     try:
@@ -202,7 +202,7 @@ def test_step_09():
         from max.driver import CPU
         from max.dtype import DType
         from max.experimental.tensor import Tensor
-        from solutions.solution_01 import GPT2Config
+        from steps.step_01 import GPT2Config
         import numpy as np
 
         config = GPT2Config()
