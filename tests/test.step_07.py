@@ -150,17 +150,17 @@ def test_step_07():
         )
 
     # Check _attn
-    if "query @ key.transpose(-1, -2)" in source.replace(" ", ""):
+    if "query@key.transpose(-1,-2)" in source.replace(" ", ""):
         results.append("✅ _attn computes Q @ K^T")
     else:
         results.append("❌ _attn should compute query @ key.transpose(-1, -2)")
-        results.append("   Hint: Copy attention computation from Step 08")
+        results.append("   attn_weights = query @ key.transpose(-1, -2)")
 
     if source.count("F.softmax") > 0:
         results.append("✅ _attn uses F.softmax")
     else:
         results.append("❌ _attn should use F.softmax")
-        results.append("   Hint: Copy attention computation from Step 08")
+        results.append("   attn_weights = F.softmax(attn_weights)")
 
     # Check forward pass
     if "self.c_attn(hidden_states)" in source.replace(" ", ""):
@@ -225,7 +225,7 @@ def test_step_07():
         from max.driver import CPU
         from max.dtype import DType
         from max.experimental.tensor import Tensor
-        from solutions.solution_01 import GPT2Config
+        from steps.step_01 import GPT2Config
         import numpy as np
 
         config = GPT2Config()
